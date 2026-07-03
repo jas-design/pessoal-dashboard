@@ -1,0 +1,35 @@
+---
+const {
+  name,
+  status = "Conectado",
+  icon = "⚡",
+  tag = "API V2",
+  stats = [],
+} = Astro.props;
+---
+
+<article class="integration-card card">
+  <div class="integration-card__top">
+    <div class="integration-card__service">
+      <div class="integration-card__icon">{icon}</div>
+
+      <div>
+        <h3>{name}</h3>
+        <span>● {status}</span>
+      </div>
+    </div>
+
+    <strong>{tag}</strong>
+  </div>
+
+  <div class="integration-card__stats">
+    {
+      stats.map((stat) => (
+        <div>
+          <span>{stat.label}</span>
+          <strong>{stat.value}</strong>
+        </div>
+      ))
+    }
+  </div>
+</article>

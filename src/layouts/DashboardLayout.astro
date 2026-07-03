@@ -1,0 +1,34 @@
+---
+import BaseLayout from "./BaseLayout.astro";
+import Sidebar from "../components/Sidebar.astro";
+import Header from "../components/Header.astro";
+import AuthGuard from "../components/AuthGuard.astro";
+
+interface Props {
+  title?: string;
+
+  subtitle?: string;
+}
+
+const {
+  title = "Olá, Andres 👋",
+
+  subtitle = "Aqui está o resumo das suas operações de hoje.",
+} = Astro.props;
+---
+
+<BaseLayout title={title}>
+  <AuthGuard />
+
+  <div class="dashboard">
+    <Sidebar />
+
+    <main class="dashboard-main">
+      <Header title={title} subtitle={subtitle} />
+
+      <section class="dashboard-content">
+        <slot />
+      </section>
+    </main>
+  </div>
+</BaseLayout>

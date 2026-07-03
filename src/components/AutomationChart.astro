@@ -1,0 +1,102 @@
+---
+const { stats = [] } = Astro.props;
+
+const labels = stats.map((item) =>
+  new Date(item.stat_date).toLocaleDateString("pt-BR", {
+    weekday: "short",
+  }),
+);
+
+const successData = stats.map((item) => item.success_count);
+const errorData = stats.map((item) => item.error_count);
+const totalData = stats.map((item) => item.total_count);
+---
+
+<section class="automation-chart card">
+  <div class="card__header">
+    <div>
+      <h2>Execuções de Automações</h2>
+      <p>Sincronizações consolidadas de workflows do n8n nos últimos 7 dias</p>
+    </div>
+
+    <button>Últimos 7 dias</button>
+  </div>
+
+  <div
+    id="automation-chart"
+    data-labels={JSON.stringify(labels)}
+    data-success={JSON.stringify(successData)}
+    data-errors={JSON.stringify(errorData)}
+    data-total={JSON.stringify(totalData)}
+  >
+  </div>
+</section>
+
+<script>
+  import ApexCharts from "apexcharts";
+
+  const chartElement = document.querySelector("#automation-chart");
+
+  if (chartElement) {
+    const labels = JSON.parse(chartElement.dataset.labels || "[]");
+    const success = JSON.parse(chartElement.dataset.success || "[]");
+    const errors = JSON.parse(chartElement.dataset.errors || "[]");
+    const total = JSON.parse(chartElement.dataset.total || "[]");
+
+    const chart = new ApexCharts(chartElement, {
+      chart: {
+        type: "line",
+        height: 320,
+        toolbar: { show: false },
+        background: "transparent",
+      },
+      series: [
+        {
+          name: "Falhas",
+          data: errors,
+        },
+        {
+          name: "Sucesso",
+          data: success,
+        },
+        {
+          name: "Total",
+          data: total,
+        },
+      ],
+      xaxis: {
+        categories: labels,
+        labels: {
+          style: {
+            colors: "#94a3b8",
+          },
+        },
+      },
+      yaxis: {
+        labels: {
+          style: {
+            colors: "#94a3b8",
+          },
+        },
+      },
+      grid: {
+        borderColor: "#263244",
+        strokeDashArray: 4,
+      },
+      stroke: {
+        width: 3,
+        curve: "smooth",
+      },
+      markers: {
+        size: 4,
+      },
+      legend: {
+        labels: {
+          colors: "#cbd5e1",
+        },
+      },
+    });
+
+    chart.render();
+  }
+</script>

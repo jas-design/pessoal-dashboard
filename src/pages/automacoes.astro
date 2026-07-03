@@ -1,0 +1,46 @@
+---
+import DashboardLayout from "../layouts/DashboardLayout.astro";
+import { getAutomationLogs } from "../lib/automations";
+
+const logs = await getAutomationLogs();
+---
+
+<DashboardLayout
+  title="Automações"
+  subtitle="Gerencie workflows, execuções e integrações com n8n."
+>
+  <section class="page-card">
+    <div class="page-card__header">
+      <div>
+        <h2>Workflows ativos</h2>
+        <p>Lista das automações conectadas ao Supabase.</p>
+      </div>
+
+      <button class="button-primary">Nova automação</button>
+    </div>
+
+    <div class="table">
+      <div class="table__row table__row--head">
+        <span>Workflow</span>
+        <span>Status</span>
+        <span>Execuções</span>
+        <span>Última execução</span>
+      </div>
+
+      {
+        logs.map((log) => (
+          <div class="table__row">
+            <span>{log.workflow_name}</span>
+            <span
+              class={log.status === "error" ? "status-error" : "status-success"}
+            >
+              {log.status}
+            </span>
+            <span>{log.execution_count}</span>
+            <span>{new Date(log.created_at).toLocaleString("pt-BR")}</span>
+          </div>
+        ))
+      }
+    </div>
+  </section>
+</DashboardLayout>

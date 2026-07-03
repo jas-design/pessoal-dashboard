@@ -1,0 +1,30 @@
+---
+import DashboardLayout from "../layouts/DashboardLayout.astro";
+---
+
+<DashboardLayout
+  title="Upload Excel"
+  subtitle="Envie planilhas para processamento e importação no Supabase."
+>
+  <section class="page-card">
+    <div class="page-card__header">
+      <div>
+        <h2>Importar planilha</h2>
+        <p>Faça upload de arquivos .xlsx ou .csv.</p>
+      </div>
+    </div>
+
+    <form class="upload-box">
+      <div>
+        <strong>Arraste sua planilha aqui</strong>
+        <p>ou clique para selecionar um arquivo</p>
+      </div>
+
+      <input type="file" accept=".xlsx,.csv" />
+
+      <button class="button-primary" type="button">
+        Enviar para processamento
+      </button>
+    </form>
+  </section>
+</DashboardLayout>

@@ -1,0 +1,48 @@
+---
+const {
+  title = "Olá, Andres 👋",
+  subtitle = "Aqui está o resumo das suas operações de hoje.",
+} = Astro.props;
+---
+
+<header class="header">
+  <div class="header__intro">
+    <h1>{title}</h1>
+    <p>{subtitle}</p>
+  </div>
+
+  <div class="header__actions">
+    <div class="header__search">
+      <span>⌕</span>
+      <input type="text" placeholder="Buscar transações, e-mails, logs..." />
+    </div>
+
+    <div class="header__date">
+      <span class="header__dot"></span>
+      terça-feira, 23 de junho de 2026
+    </div>
+
+    <button class="header__theme">Claro</button>
+    <button class="header__theme is-active">Slate Dark</button>
+
+    <button class="header__notification">
+      🔔
+      <span></span>
+    </button>
+
+    <div class="header__avatar">AB</div>
+  </div>
+
+  <button class="header__logout" id="logout-button"> Sair </button>
+</header>
+
+<script>
+  import { supabase } from "../lib/supabase";
+
+  const logoutButton = document.querySelector("#logout-button");
+
+  logoutButton?.addEventListener("click", async () => {
+    await supabase.auth.signOut();
+    window.location.href = "/login";
+  });
+</script>

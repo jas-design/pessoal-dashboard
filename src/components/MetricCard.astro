@@ -1,0 +1,31 @@
+---
+const {
+  title,
+  value,
+  variation,
+  comparison = "vs ontem",
+  icon = "⚡",
+  type = "positive",
+} = Astro.props;
+
+const isPositive = Number(variation) >= 0;
+---
+
+<article class="metric-card">
+  <div class="metric-card__top">
+    <span>{title}</span>
+    <div class="metric-card__icon">{icon}</div>
+  </div>
+
+  <strong>{value}</strong>
+
+  <p
+    class:list={[
+      "metric-card__variation",
+      isPositive ? "is-positive" : "is-negative",
+    ]}
+  >
+    {isPositive ? "↗" : "↘"}
+    {variation}% {comparison}
+  </p>
+</article>

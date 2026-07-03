@@ -1,0 +1,55 @@
+---
+import AuthLayout from "../layouts/AuthLayout.astro";
+---
+
+<AuthLayout title="Login | Hub Pessoal">
+  <form class="login-form" id="login-form">
+    <div class="login-form__header">
+      <div class="sidebar__logo">⚡</div>
+      <h1>Entrar no Hub</h1>
+      <p>Acesse seu dashboard executivo.</p>
+    </div>
+
+    <label>
+      E-mail
+      <input id="email" type="email" placeholder="seu@email.com" required />
+    </label>
+
+    <label>
+      Senha
+      <input id="password" type="password" placeholder="Sua senha" required />
+    </label>
+
+    <button class="button-primary" type="submit"> Entrar </button>
+
+    <p id="login-error" class="login-form__error"></p>
+  </form>
+
+  <script>
+    import { supabase } from "../lib/supabase";
+
+    const form = document.querySelector("#login-form");
+    const errorMessage = document.querySelector("#login-error");
+
+    form?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const email = document.querySelector("#email")?.value;
+      const password = document.querySelector("#password")?.value;
+
+      errorMessage.textContent = "";
+
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        errorMessage.textContent = "E-mail ou senha inválidos.";
+        return;
+      }
+
+      window.location.href = "/dashboard";
+    });
+  </script>
+</AuthLayout>

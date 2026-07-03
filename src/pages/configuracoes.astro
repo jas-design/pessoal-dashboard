@@ -1,0 +1,45 @@
+---
+import DashboardLayout from "../layouts/DashboardLayout.astro";
+---
+
+<DashboardLayout
+  title="Configurações"
+  subtitle="Ajustes gerais do dashboard e das integrações."
+>
+  <section class="page-card">
+    <div class="page-card__header">
+      <div>
+        <h2>Preferências do sistema</h2>
+        <p>Configurações básicas do Hub Pessoal.</p>
+      </div>
+    </div>
+
+    <form class="settings-form">
+      <label>
+        Nome do hub
+        <input type="text" value="Hub Pessoal" />
+      </label>
+
+      <label>
+        Ambiente
+        <select>
+          <option>Produção</option>
+          <option>Desenvolvimento</option>
+        </select>
+      </label>
+
+      <label>
+        Tema padrão
+        <select>
+          <option>Slate Dark</option>
+          <option>Claro</option>
+          <option>Cosmic Dark</option>
+        </select>
+      </label>
+
+      <button class="button-primary" type="button">
+        Salvar configurações
+      </button>
+    </form>
+  </section>
+</DashboardLayout>

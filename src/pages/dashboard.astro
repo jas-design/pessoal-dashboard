@@ -1,0 +1,70 @@
+---
+import DashboardLayout from "../layouts/DashboardLayout.astro";
+import MetricCard from "../components/MetricCard.astro";
+import AutomationChart from "../components/AutomationChart.astro";
+import ActivityFeed from "../components/ActivityFeed.astro";
+import IntegrationCard from "../components/IntegrationCard.astro";
+
+import { getDashboardMetrics } from "../lib/dashboard";
+import { getIntegrations } from "../lib/integrations";
+import { getRecentActivities } from "../lib/activities";
+import { getAutomationDailyStats } from "../lib/chart";
+
+const metrics = await getDashboardMetrics();
+const integrations = await getIntegrations();
+const activities = await getRecentActivities();
+const chartStats = await getAutomationDailyStats();
+---
+
+<DashboardLayout>
+  <section class="metrics-grid">
+    {
+      metrics.map((metric) => (
+        <MetricCard
+          title={metric.metric_label}
+          value={metric.metric_value}
+          variation={metric.variation}
+          comparison={metric.comparison_label}
+          icon={metric.icon}
+        />
+      ))
+    }
+  </section>
+
+  <section class="dashboard-grid">
+    <AutomationChart stats={chartStats} />
+    <ActivityFeed activities={activities} />
+  </section>
+
+  <section class="section-heading">
+    <h2>Status das Integrações SaaS</h2>
+    <p>Conexões de API ativas e monitoramento de canais externos</p>
+  </section>
+
+  <section class="integrations-grid">
+    {
+      integrations.map((integration) => (
+        <IntegrationCard
+          name={integration.name}
+          icon={
+            integration.type === "email"
+              ? "✉️"
+              : integration.type === "calendar"
+                ? "📅"
+                : integration.type === "storage"
+                  ? "🗂️"
+                  : "⚡"
+          }
+          tag={integration.api_version}
+          status={
+            integration.status === "connected" ? "Conectado" : "Desconectado"
+          }
+          stats={[
+            { label: "Tipo:", value: integration.type },
+            { label: "Status:", value: integration.status },
+          ]}
+        />
+      ))
+    }
+  </section>
+</DashboardLayout>
