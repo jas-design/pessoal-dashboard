@@ -137,7 +137,6 @@ src/
     global.scss
     layouts/
     pages/
-    main.scss
   types/
 ```
 
