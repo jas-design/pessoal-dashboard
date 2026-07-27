@@ -1,4 +1,4 @@
-import supabase from '../../lib/supabase/client';
+import supabase from '../../lib/supabase/browser';
 
 const BUCKET_NAME = 'financial-files';
 const MAX_FILE_SIZE = 10 * 1024 * 1024;

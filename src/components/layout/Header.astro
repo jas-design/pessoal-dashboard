@@ -1,0 +1,44 @@
+---
+import { getUnreadNotificationsCount } from "../../services/notifications/notifications";
+
+const {
+  title = "Olá, Andres 👋",
+  subtitle = "Aqui está o resumo das suas operações de hoje.",
+} = Astro.props;
+
+const unreadCount = await getUnreadNotificationsCount();
+---
+
+<header class="header">
+  <div class="header__intro">
+    <h1>{title}</h1>
+    <p>{subtitle}</p>
+  </div>
+
+  <div class="header__actions">
+    <div class="header__search">
+      <span>⌕</span>
+      <input type="text" placeholder="Buscar transações, e-mails, logs..." />
+    </div>
+
+    <a href="/notificacoes" class="header__notification">
+      🔔
+      {unreadCount > 0 && <span>{unreadCount}</span>}
+    </a>
+
+    <div class="header__avatar">AB</div>
+
+    <button class="header__logout" id="logout-button"> Sair </button>
+  </div>
+</header>
+
+<script>
+  import { signOut } from "../../services/auth/auth";
+
+  const logoutButton = document.querySelector("#logout-button");
+
+  logoutButton?.addEventListener("click", async () => {
+    await signOut();
+    window.location.href = "/login";
+  });
+</script>

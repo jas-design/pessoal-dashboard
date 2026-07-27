@@ -1,0 +1,84 @@
+.financial-upload-form {
+  max-width: 760px;
+  display: grid;
+  gap: 20px;
+
+  label:not(.financial-upload-area) {
+    display: grid;
+    gap: 8px;
+    color: #cbd5e1;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  input,
+  select {
+    min-height: 44px;
+    padding: 0 14px;
+  }
+
+  .button-primary {
+    width: fit-content;
+  }
+}
+
+.financial-upload-area {
+  min-height: 220px;
+  padding: 32px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  text-align: center;
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--green);
+    background: var(--green-soft);
+  }
+
+  strong {
+    color: var(--text);
+    font-size: 18px;
+  }
+
+  span {
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  input {
+    margin-top: 14px;
+    color: var(--muted);
+  }
+}
+
+.selected-files {
+  display: grid;
+  gap: 8px;
+
+  &__item {
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--panel-2);
+    color: #cbd5e1;
+    font-size: 13px;
+  }
+}
+
+.financial-upload-message {
+  min-height: 20px;
+  color: var(--muted);
+  font-size: 13px;
+
+  &.is-success {
+    color: var(--green);
+  }
+
+  &.is-error {
+    color: var(--red);
+  }
+}

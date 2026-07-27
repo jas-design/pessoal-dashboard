@@ -1,4 +1,4 @@
-import supabase from "../../lib/supabase/client";
+import supabase from "../../lib/supabase/browser";
 
 export async function getAutomationDailyStats() {
   const { data, error } = await supabase

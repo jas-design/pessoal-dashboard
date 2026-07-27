@@ -1,9 +1,0 @@
-<script>
-  import supabase from "../lib/supabase/client";
-
-  const { data } = await supabase.auth.getSession();
-
-  if (!data.session) {
-    window.location.href = "/login";
-  }
-</script>

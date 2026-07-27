@@ -1,0 +1,40 @@
+---
+const { activities = [] } = Astro.props;
+---
+
+<section class="activity-card card">
+  <div class="card__header">
+    <div>
+      <h2>Atividades Recentes</h2>
+      <p>Eventos monitorados em tempo real</p>
+    </div>
+
+    <span>...</span>
+  </div>
+
+  <div class="activity-card__list">
+    {
+      activities.map((activity) => (
+        <div class="activity-card__item">
+          <span
+            class:list={[
+              "activity-card__status",
+              activity.status === "error" && "is-error",
+            ]}
+          >
+            {activity.status === "error" ? "!" : "+"}
+          </span>
+
+          <div>
+            <strong>{activity.title}</strong>
+            <small>
+              {new Date(activity.created_at).toLocaleString("pt-BR")}
+            </small>
+          </div>
+        </div>
+      ))
+    }
+  </div>
+
+  <a href="/documentos" class="activity-card__button">Ver documentos ></a>
+</section>

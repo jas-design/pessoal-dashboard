@@ -1,23 +1,41 @@
 ---
 import DashboardLayout from "../layouts/DashboardLayout.astro";
-import WidgetEngine from "../components/widgets/WidgetEngine.astro";
+import ActivityFeed from "../components/dashboard/ActivityFeed.astro";
+import AutomationChart from "../components/dashboard/AutomationChart.astro";
+import IntegrationCard from "../components/dashboard/IntegrationCard.astro";
+import MetricCard from "../components/dashboard/MetricCard.astro";
 
-import { getDashboardWidgets } from "../services/dashboard/widgets";
-import { loadWidgetData } from "../components/widgets/WidgetLoader";
+import { getRecentActivities } from "../services/activity/activities";
+import { getAutomationDailyStats } from "../services/dashboard/charts";
+import { getDashboardMetrics } from "../services/dashboard/metrics";
+import { getIntegrations } from "../services/integrations/integrations";
 
-const widgets = await getDashboardWidgets();
-const widgetData = await loadWidgetData();
+const [metrics, chartStats, activities, integrations] = await Promise.all([
+  getDashboardMetrics(),
+  getAutomationDailyStats(),
+  getRecentActivities(),
+  getIntegrations(),
+]);
 ---
 
 <DashboardLayout>
   <section class="metrics-grid">
-    <WidgetEngine widgets={widgets} data={widgetData} type="metric" />
+    {
+      metrics.map((metric) => (
+        <MetricCard
+          title={metric.metric_label}
+          value={metric.metric_value}
+          variation={metric.variation}
+          comparison={metric.comparison_label}
+          icon={metric.icon}
+        />
+      ))
+    }
   </section>
 
   <section class="dashboard-grid">
-    <WidgetEngine widgets={widgets} data={widgetData} type="chart" />
-
-    <WidgetEngine widgets={widgets} data={widgetData} type="activity" />
+    <AutomationChart stats={chartStats} />
+    <ActivityFeed activities={activities} />
   </section>
 
   <section class="section-heading">
@@ -25,5 +43,21 @@ const widgetData = await loadWidgetData();
     <p>Conexões de API ativas e monitoramento de canais externos</p>
   </section>
 
-  <WidgetEngine widgets={widgets} data={widgetData} type="integration" />
+  <section class="integrations-grid">
+    {
+      integrations.map((integration) => (
+        <IntegrationCard
+          name={integration.name}
+          tag={integration.api_version}
+          status={
+            integration.status === "connected" ? "Conectado" : "Desconectado"
+          }
+          stats={[
+            { label: "Tipo:", value: integration.type },
+            { label: "Status:", value: integration.status },
+          ]}
+        />
+      ))
+    }
+  </section>
 </DashboardLayout>

@@ -15,11 +15,8 @@ export interface ApiConnection {
   provider_key: string;
   status: string;
   connection_type: string | null;
-  access_token: string | null;
-  refresh_token: string | null;
   expires_at: string | null;
   last_sync_at: string | null;
-  metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 }

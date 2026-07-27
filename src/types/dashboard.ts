@@ -11,19 +11,6 @@ export interface DashboardMetric {
   updated_at: string;
 }
 
-export interface DashboardWidget {
-  id: string;
-  widget_key: string;
-  title: string;
-  description: string;
-  widget_type: string;
-  data_source: string;
-  position: number;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
 export interface AutomationDailyStat {
   id: string;
   stat_date: string;

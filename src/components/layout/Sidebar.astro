@@ -1,0 +1,79 @@
+---
+const menuItems = [
+  { label: "Dashboard", href: "/dashboard", icon: "grid", badge: null },
+  { label: "Documentos", href: "/documentos", icon: "file", badge: null },
+  {
+    label: "Configuracoes",
+    href: "/configuracoes",
+    icon: "settings",
+    badge: null,
+  },
+  { label: "Notificacoes", href: "/notificacoes", icon: "bell", badge: null },
+];
+
+const currentPath = Astro.url.pathname;
+
+const icons = {
+  grid: "[ ]",
+  file: "[#]",
+  settings: "[=]",
+  bell: "[!]",
+};
+---
+
+<aside class="sidebar">
+  <div class="sidebar__brand">
+    <div class="sidebar__logo">HP</div>
+
+    <div>
+      <strong>Hub Pessoal</strong>
+      <span>EXECUTIVO V1.0</span>
+    </div>
+  </div>
+
+  <nav class="sidebar__nav">
+    {
+      menuItems.map((item) => (
+        <a
+          href={item.href}
+          class:list={[
+            "sidebar__link",
+            currentPath === item.href && "is-active",
+          ]}
+        >
+          <span class="sidebar__icon">{icons[item.icon]}</span>
+          <span>{item.label}</span>
+
+          {item.badge && <span class="sidebar__badge">{item.badge}</span>}
+        </a>
+      ))
+    }
+  </nav>
+
+  <div class="sidebar__footer">
+    <div class="sidebar__status">
+      <div class="sidebar__status-header">
+        <span>Status</span>
+        <strong>Producao</strong>
+      </div>
+
+      <div class="sidebar__usage">
+        <span>Uso do Sistema</span>
+        <span>2.4 GB / 5 GB</span>
+      </div>
+
+      <div class="sidebar__progress">
+        <div style="width: 48%;"></div>
+      </div>
+    </div>
+
+    <div class="sidebar__user">
+      <div class="sidebar__avatar">AB</div>
+
+      <div>
+        <strong>Andres Braun</strong>
+        <span>Administrador</span>
+      </div>
+    </div>
+  </div>
+</aside>

@@ -13,7 +13,6 @@ export interface Webhook {
   name: string;
   source: string;
   endpoint_url: string | null;
-  secret_key: string | null;
   status: string;
   last_triggered_at: string | null;
   created_at: string;

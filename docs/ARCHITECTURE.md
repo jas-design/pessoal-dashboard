@@ -106,32 +106,44 @@ Status padrão:
 - `failed`
 - `cancelled`
 
-## Organização sugerida do Astro
-
-Adapte à estrutura real:
+## Organização atual do Astro
 
 ```text
 src/
   components/
+    dashboard/
+    documents/
+    layout/
+    notifications/
   layouts/
   lib/
     supabase/
-      client.ts
-      server.ts
+      browser.ts
   pages/
-    api/
-      agents/
-      documents/
-      n8n/
+    documentos/
+      index.astro
+      upload.astro
     dashboard.astro
-    documentos.astro
-    financeiro.astro
-    analises.astro
-    aprovacoes.astro
   services/
+    activity/
+    auth/
+    automation/
+    dashboard/
+    documents/
+    integrations/
+    notifications/
+    system/
   styles/
+    global.scss
+    layouts/
+    pages/
+    main.scss
   types/
 ```
+
+O cliente atual em `browser.ts` usa somente URL e anon key públicas. O cliente
+server-side será criado junto da migração do projeto para SSR e autenticação por
+cookies. Até essa etapa, nenhum secret server-only deve ser importado por `src/`.
 
 ## Contratos entre sistemas
 

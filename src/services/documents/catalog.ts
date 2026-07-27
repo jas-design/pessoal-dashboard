@@ -1,4 +1,4 @@
-import supabase from '../../lib/supabase/client';
+import supabase from '../../lib/supabase/browser';
 
 export interface DocumentFilters {
   source?: 'supabase' | 'google_drive';
