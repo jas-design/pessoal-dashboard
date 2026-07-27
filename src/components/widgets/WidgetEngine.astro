@@ -1,0 +1,11 @@
+---
+import WidgetFactory from "./WidgetFactory.astro";
+
+const { widgets = [], data = {}, type } = Astro.props;
+
+const visibleWidgets = type
+  ? widgets.filter((widget) => widget.widget_type === type)
+  : widgets;
+---
+
+{visibleWidgets.map((widget) => <WidgetFactory widget={widget} data={data} />)}

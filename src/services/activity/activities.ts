@@ -1,0 +1,16 @@
+import supabase from "../../lib/supabase/client";
+
+export async function getRecentActivities(limit = 10) {
+  const { data, error } = await supabase
+    .from('activities')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error('Erro ao buscar atividades:', error.message);
+    return [];
+  }
+
+  return data ?? [];
+}

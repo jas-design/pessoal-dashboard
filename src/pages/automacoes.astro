@@ -1,6 +1,6 @@
 ---
 import DashboardLayout from "../layouts/DashboardLayout.astro";
-import { getAutomationLogs } from "../lib/automations";
+import { getAutomationLogs } from "../services/automation/logs";
 
 const logs = await getAutomationLogs();
 ---

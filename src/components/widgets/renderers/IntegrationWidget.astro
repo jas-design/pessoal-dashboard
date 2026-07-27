@@ -1,0 +1,34 @@
+---
+import IntegrationCard from "../../IntegrationCard.astro";
+
+const { data } = Astro.props;
+
+const integrations = data.integrations ?? [];
+---
+
+<section class="integrations-grid">
+  {
+    integrations.map((integration) => (
+      <IntegrationCard
+        name={integration.name}
+        icon={
+          integration.type === "email"
+            ? "✉️"
+            : integration.type === "calendar"
+              ? "📅"
+              : integration.type === "storage"
+                ? "🗂️"
+                : "⚡"
+        }
+        tag={integration.api_version}
+        status={
+          integration.status === "connected" ? "Conectado" : "Desconectado"
+        }
+        stats={[
+          { label: "Tipo:", value: integration.type },
+          { label: "Status:", value: integration.status },
+        ]}
+      />
+    ))
+  }
+</section>

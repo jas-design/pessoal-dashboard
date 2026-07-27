@@ -741,3 +741,204 @@
         color: var(--red);
     }
 }
+
+.header__notification {
+    position: relative;
+    width: 44px;
+    padding: 0;
+    span {
+        position: absolute;
+        top: -6px;
+        right: -6px;
+        min-width: 20px;
+        height: 20px;
+        padding: 0 6px;
+        background: var(--red);
+        color: white;
+        border-radius: 999px;
+        border: 2px solid var(--panel);
+        display: grid;
+        place-items: center;
+        font-size: 11px;
+        font-weight: 900;
+    }
+}
+
+.table__row--5 {
+    grid-template-columns: 1.4fr 0.8fr 0.8fr 1fr 0.8fr;
+}
+
+.button-small {
+    height: 34px;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: #cbd5e1;
+    border-radius: 10px;
+    padding: 0 12px;
+    font-size: 12px;
+    font-weight: 800;
+    &:hover {
+        background: var(--green-soft);
+        color: var(--green);
+    }
+}
+
+.system-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+.documents-table {
+    .table__row {
+        align-items: center;
+    }
+    strong {
+        display: block;
+        color: var(--text);
+        font-size: 14px;
+    }
+}
+
+.document-file-type {
+    display: block;
+    margin-top: 5px;
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.status-pending {
+    color: var(--orange);
+    font-weight: 800;
+}
+
+//financial-upload-form 
+.financial-upload-form {
+    max-width: 760px;
+    display: grid;
+    gap: 20px;
+    label:not(.financial-upload-area) {
+        display: grid;
+        gap: 8px;
+        color: #cbd5e1;
+        font-size: 14px;
+        font-weight: 700;
+    }
+    input,
+    select {
+        min-height: 44px;
+        padding: 0 14px;
+    }
+    .button-primary {
+        width: fit-content;
+    }
+}
+
+.financial-upload-area {
+    min-height: 220px;
+    padding: 32px;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-lg);
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 8px;
+    text-align: center;
+    cursor: pointer;
+    &:hover {
+        border-color: var(--green);
+        background: var(--green-soft);
+    }
+    strong {
+        color: var(--text);
+        font-size: 18px;
+    }
+    span {
+        color: var(--muted);
+        font-size: 13px;
+    }
+    input {
+        margin-top: 14px;
+        color: var(--muted);
+    }
+}
+
+.selected-files {
+    display: grid;
+    gap: 8px;
+    &__item {
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--panel-2);
+        color: #cbd5e1;
+        font-size: 13px;
+    }
+}
+
+.financial-upload-message {
+    min-height: 20px;
+    color: var(--muted);
+    font-size: 13px;
+    &.is-success {
+        color: var(--green);
+    }
+    &.is-error {
+        color: var(--red);
+    }
+}
+
+//DOCUMENTS
+.documents-loading,
+.documents-error {
+    padding: 20px 0;
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.documents-error {
+    color: var(--red);
+}
+
+.documents-table {
+    .table__row {
+        align-items: center;
+    }
+    strong {
+        display: block;
+        color: var(--text);
+    }
+}
+
+.document-file-type {
+    display: block;
+    margin-top: 5px;
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.status-pending {
+    color: var(--orange);
+    font-weight: 800;
+}
+
+.documents-table__row {
+    grid-template-columns: minmax(260px, 1.5fr) minmax(120px, 0.7fr) minmax(150px, 0.8fr) minmax(110px, 0.6fr) minmax(120px, 0.6fr);
+}
+
+.document-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+@media (max-width: 900px) {
+    .documents-table__row {
+        grid-template-columns: 1fr;
+    }
+}
+
+[hidden] {
+    display: none !important;
+}

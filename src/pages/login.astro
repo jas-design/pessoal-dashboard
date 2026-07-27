@@ -26,26 +26,35 @@ import AuthLayout from "../layouts/AuthLayout.astro";
   </form>
 
   <script>
-    import { supabase } from "../lib/supabase";
+    import supabase from "../lib/supabase/client";
 
-    const form = document.querySelector("#login-form");
-    const errorMessage = document.querySelector("#login-error");
+    const form = document.querySelector<HTMLFormElement>("#login-form");
+
+    const emailInput = document.querySelector<HTMLInputElement>("#email");
+
+    const passwordInput = document.querySelector<HTMLInputElement>("#password");
+
+    const errorMessage = document.querySelector<HTMLElement>("#login-error");
 
     form?.addEventListener("submit", async (event) => {
       event.preventDefault();
 
-      const email = document.querySelector("#email")?.value;
-      const password = document.querySelector("#password")?.value;
+      if (!emailInput || !passwordInput || !errorMessage) {
+        return;
+      }
 
-      errorMessage.textContent = "";
-
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: emailInput.value,
+        password: passwordInput.value,
       });
 
       if (error) {
         errorMessage.textContent = "E-mail ou senha inválidos.";
+        return;
+      }
+
+      if (!data.session) {
+        errorMessage.textContent = "A sessão não foi criada.";
         return;
       }
 

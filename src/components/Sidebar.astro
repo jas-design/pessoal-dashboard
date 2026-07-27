@@ -19,6 +19,9 @@ const menuItems = [
     icon: "settings",
     badge: null,
   },
+  { label: "Notificações", href: "/notificacoes", icon: "bell", badge: null },
+  { label: "Sistema", href: "/sistema", icon: "system", badge: null },
+  { label: "Widgets", href: "/widgets", icon: "widgets", badge: null },
 ];
 
 const currentPath = Astro.url.pathname;
@@ -33,6 +36,9 @@ const icons = {
   upload: "⇧",
   terminal: ">_",
   settings: "⚙",
+  bell: "🔔",
+  system: "🖥️",
+  widgets: "▦",
 };
 ---
 

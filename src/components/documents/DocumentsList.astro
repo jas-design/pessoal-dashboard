@@ -1,0 +1,256 @@
+<div class="documents-list">
+  <p id="documents-loading" class="documents-loading">
+    Carregando documentos...
+  </p>
+
+  <p id="documents-error" class="documents-error" hidden></p>
+
+  <div id="documents-empty" class="empty-state" hidden>
+    <div>
+      <h3>Nenhum documento encontrado</h3>
+
+      <p>
+        Os arquivos enviados pelo dashboard ou sincronizados do Google Drive
+        aparecerão aqui.
+      </p>
+    </div>
+  </div>
+
+  <div id="documents-table" class="table documents-table" hidden>
+    <div class="table__row table__row--head documents-table__row">
+      <span>Arquivo</span>
+      <span>Origem</span>
+      <span>Categoria</span>
+      <span>Status</span>
+      <span>Ações</span>
+    </div>
+
+    <div id="documents-table-body"></div>
+  </div>
+</div>
+
+<script>
+  import {
+    getDocuments,
+    createDocumentDownloadUrl,
+  } from "../../services/documents/catalog";
+
+  interface DocumentItem {
+    id: string;
+    file_name: string;
+    mime_type: string | null;
+    file_size: number | null;
+    source: "supabase" | "google_drive";
+    category: string;
+    processing_status: string;
+    storage_bucket: string | null;
+    storage_path: string | null;
+    google_web_url: string | null;
+  }
+  const loading = document.querySelector<HTMLElement>("#documents-loading");
+
+  const errorMessage = document.querySelector<HTMLElement>("#documents-error");
+
+  const emptyState = document.querySelector<HTMLElement>("#documents-empty");
+
+  const table = document.querySelector<HTMLElement>("#documents-table");
+
+  const tableBody = document.querySelector<HTMLElement>(
+    "#documents-table-body",
+  );
+
+  const categoryLabels: Record<string, string> = {
+    financeiro: "Financeiro",
+    contas_pessoais: "Contas pessoais",
+    imoveis: "Imóveis",
+    investimentos: "Investimentos",
+    impostos: "Impostos",
+    contratos: "Contratos",
+    operacional: "Operacional",
+    outros: "Outros",
+  };
+
+  const statusLabels: Record<string, string> = {
+    pending: "Pendente",
+    processing: "Processando",
+    indexed: "Indexado",
+    completed: "Concluído",
+    failed: "Erro",
+  };
+
+  function formatFileSize(size: number | null) {
+    if (!size) {
+      return "Tamanho não informado";
+    }
+
+    if (size < 1024 * 1024) {
+      return `${Math.ceil(size / 1024)} KB`;
+    }
+
+    return `${(size / 1024 / 1024).toFixed(2)} MB`;
+  }
+
+  function getStatusClass(status: string) {
+    if (status === "failed") {
+      return "status-error";
+    }
+
+    if (status === "completed" || status === "indexed") {
+      return "status-success";
+    }
+
+    return "status-pending";
+  }
+
+  function createCell(text: string) {
+    const cell = document.createElement("span");
+    cell.textContent = text;
+
+    return cell;
+  }
+
+  function createFileCell(item: DocumentItem) {
+    const cell = document.createElement("span");
+
+    const fileName = document.createElement("strong");
+    fileName.textContent = item.file_name;
+
+    const details = document.createElement("small");
+    details.className = "document-file-type";
+    details.textContent =
+      `${item.mime_type ?? "Tipo desconhecido"} · ` +
+      formatFileSize(item.file_size);
+
+    cell.append(fileName, details);
+
+    return cell;
+  }
+
+  function createActionsCell(item: DocumentItem) {
+    const cell = document.createElement("span");
+    cell.className = "document-actions";
+
+    if (
+      item.source === "supabase" &&
+      item.storage_bucket &&
+      item.storage_path
+    ) {
+      const downloadButton = document.createElement("button");
+
+      downloadButton.type = "button";
+      downloadButton.className = "button-small";
+      downloadButton.textContent = "Baixar";
+
+      downloadButton.addEventListener("click", async () => {
+        downloadButton.disabled = true;
+        downloadButton.textContent = "Preparando...";
+
+        try {
+          const signedUrl = await createDocumentDownloadUrl(
+            item.storage_bucket!,
+            item.storage_path!,
+          );
+
+          window.open(signedUrl, "_blank", "noopener,noreferrer");
+        } catch (error) {
+          console.error(error);
+
+          alert(
+            error instanceof Error
+              ? error.message
+              : "Não foi possível baixar o arquivo.",
+          );
+        } finally {
+          downloadButton.disabled = false;
+          downloadButton.textContent = "Baixar";
+        }
+      });
+
+      cell.appendChild(downloadButton);
+    }
+
+    if (item.source === "google_drive" && item.google_web_url) {
+      const driveLink = document.createElement("a");
+
+      driveLink.href = item.google_web_url;
+      driveLink.target = "_blank";
+      driveLink.rel = "noopener noreferrer";
+      driveLink.className = "button-small";
+      driveLink.textContent = "Abrir no Drive";
+
+      cell.appendChild(driveLink);
+    }
+
+    return cell;
+  }
+
+  function createDocumentRow(item: DocumentItem) {
+    const row = document.createElement("div");
+    row.className = "table__row documents-table__row";
+
+    const source = item.source === "google_drive" ? "Google Drive" : "Supabase";
+
+    const category = categoryLabels[item.category] ?? item.category;
+
+    const status =
+      statusLabels[item.processing_status] ?? item.processing_status;
+
+    const statusCell = createCell(status);
+    statusCell.className = getStatusClass(item.processing_status);
+
+    row.append(
+      createFileCell(item),
+      createCell(source),
+      createCell(category),
+      statusCell,
+      createActionsCell(item),
+    );
+
+    return row;
+  }
+
+  function renderDocuments(items: DocumentItem[]) {
+    if (!tableBody || !table || !emptyState) {
+      return;
+    }
+
+    tableBody.innerHTML = "";
+
+    if (items.length === 0) {
+      emptyState.hidden = false;
+      table.hidden = true;
+      return;
+    }
+
+    emptyState.hidden = true;
+    table.hidden = false;
+
+    items.forEach((item) => {
+      tableBody.appendChild(createDocumentRow(item));
+    });
+  }
+
+  async function loadDocuments() {
+    try {
+      const documents = await getDocuments();
+
+      renderDocuments(documents as DocumentItem[]);
+    } catch (error) {
+      console.error(error);
+
+      if (errorMessage) {
+        errorMessage.hidden = false;
+        errorMessage.textContent =
+          error instanceof Error
+            ? error.message
+            : "Não foi possível carregar os documentos.";
+      }
+    } finally {
+      if (loading) {
+        loading.hidden = true;
+      }
+    }
+  }
+
+  loadDocuments();
+</script>

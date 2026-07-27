@@ -1,0 +1,178 @@
+<form class="financial-upload-form" id="financial-upload-form">
+  <label>
+    Categoria
+
+    <select id="upload-category" required>
+      <option value="">Selecione uma categoria</option>
+      <option value="financeiro">Financeiro</option>
+      <option value="contas_pessoais">Contas pessoais</option>
+      <option value="imoveis">Imóveis</option>
+      <option value="investimentos">Investimentos</option>
+      <option value="impostos">Impostos</option>
+      <option value="outros">Outros</option>
+    </select>
+  </label>
+
+  <label>
+    Subcategoria
+
+    <input
+      id="upload-subcategory"
+      type="text"
+      placeholder="Ex.: Banco, aluguel, cartão..."
+    />
+  </label>
+
+  <label class="financial-upload-area">
+    <strong>Selecione os arquivos financeiros</strong>
+
+    <span> PDF, CSV, XLS ou XLSX. Máximo de 10 MB por arquivo. </span>
+
+    <input
+      id="financial-files"
+      type="file"
+      accept=".pdf,.csv,.xls,.xlsx"
+      multiple
+      required
+    />
+  </label>
+
+  <div id="selected-files" class="selected-files"></div>
+
+  <button type="submit" class="button-primary" id="upload-submit-button">
+    Enviar arquivos
+  </button>
+
+  <p id="upload-message" class="financial-upload-message" aria-live="polite">
+  </p>
+</form>
+
+<script>
+  import { uploadFinancialFiles } from "../../services/documents/upload";
+
+  const form = document.querySelector<HTMLFormElement>(
+    "#financial-upload-form",
+  );
+
+  const fileInput =
+    document.querySelector<HTMLInputElement>("#financial-files");
+
+  const categoryInput =
+    document.querySelector<HTMLSelectElement>("#upload-category");
+
+  const subcategoryInput = document.querySelector<HTMLInputElement>(
+    "#upload-subcategory",
+  );
+
+  const selectedFiles = document.querySelector<HTMLElement>("#selected-files");
+
+  const submitButton = document.querySelector<HTMLButtonElement>(
+    "#upload-submit-button",
+  );
+
+  const message = document.querySelector<HTMLElement>("#upload-message");
+
+  function showSelectedFiles() {
+    if (!fileInput || !selectedFiles) {
+      return;
+    }
+
+    const files = Array.from(fileInput.files ?? []);
+
+    selectedFiles.innerHTML = "";
+
+    files.forEach((file) => {
+      const item = document.createElement("div");
+
+      item.className = "selected-files__item";
+      item.textContent = `${file.name} — ${formatFileSize(file.size)}`;
+
+      selectedFiles.appendChild(item);
+    });
+  }
+
+  function formatFileSize(size: number) {
+    if (size < 1024 * 1024) {
+      return `${Math.ceil(size / 1024)} KB`;
+    }
+
+    return `${(size / 1024 / 1024).toFixed(2)} MB`;
+  }
+
+  fileInput?.addEventListener("change", showSelectedFiles);
+
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    if (
+      !fileInput ||
+      !categoryInput ||
+      !subcategoryInput ||
+      !submitButton ||
+      !message
+    ) {
+      return;
+    }
+
+    const files = Array.from(fileInput.files ?? []);
+    const category = categoryInput.value;
+
+    message.className = "financial-upload-message";
+    message.textContent = "";
+
+    if (!category) {
+      message.classList.add("is-error");
+      message.textContent = "Selecione uma categoria.";
+      return;
+    }
+
+    if (files.length === 0) {
+      message.classList.add("is-error");
+      message.textContent = "Selecione pelo menos um arquivo.";
+      return;
+    }
+
+    submitButton.disabled = true;
+    submitButton.textContent = "Enviando...";
+
+    try {
+      const results = await uploadFinancialFiles({
+        files,
+        category,
+        subcategory: subcategoryInput.value.trim(),
+      });
+
+      const uploadedCount = results.filter((result) => result.success).length;
+
+      const failedResults = results.filter((result) => !result.success);
+
+      if (failedResults.length === 0) {
+        message.classList.add("is-success");
+        message.textContent = `${uploadedCount} arquivo(s) enviado(s) com sucesso.`;
+
+        setTimeout(() => {
+          window.location.href = "/documentos";
+        }, 800);
+
+        return;
+      }
+
+      message.classList.add("is-error");
+      message.textContent =
+        `${uploadedCount} enviado(s). ` +
+        `${failedResults.length} arquivo(s) falharam.`;
+
+      console.error("Falhas no upload:", failedResults);
+    } catch (error) {
+      message.classList.add("is-error");
+
+      message.textContent =
+        error instanceof Error
+          ? error.message
+          : "Não foi possível enviar os arquivos.";
+    } finally {
+      submitButton.disabled = false;
+      submitButton.textContent = "Enviar arquivos";
+    }
+  });
+</script>

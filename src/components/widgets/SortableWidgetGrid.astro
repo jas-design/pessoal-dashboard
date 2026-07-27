@@ -1,0 +1,9 @@
+<div id="sortable-widgets">
+  {
+    widgets.map((widget) => (
+      <div class="sortable-widget" data-widget-id={widget.id}>
+        <WidgetFactory widget={widget} data={data} />
+      </div>
+    ))
+  }
+</div>

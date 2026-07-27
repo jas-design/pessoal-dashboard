@@ -1,0 +1,66 @@
+---
+import DashboardLayout from "../layouts/DashboardLayout.astro";
+import NotificationActions from "../components/NotificationActions.astro";
+import { getNotifications } from "../services/notifications/notifications";
+
+const notifications = await getNotifications(50);
+---
+
+<DashboardLayout
+  title="Notificações"
+  subtitle="Acompanhe alertas do sistema, automações e integrações."
+>
+  <section class="page-card">
+    <div class="page-card__header">
+      <div>
+        <h2>Central de notificações</h2>
+        <p>Alertas recentes vindos do Supabase, n8n e integrações.</p>
+      </div>
+    </div>
+
+    <div class="table">
+      <div class="table__row table__row--head table__row--5">
+        <span>Título</span>
+        <span>Tipo</span>
+        <span>Status</span>
+        <span>Data</span>
+        <span>Ação</span>
+      </div>
+
+      {
+        notifications.length === 0 ? (
+          <div class="empty-state">
+            <div>
+              <h3>Nenhuma notificação encontrada</h3>
+              <p>Quando houver novos alertas, eles aparecerão aqui.</p>
+            </div>
+          </div>
+        ) : (
+          notifications.map((notification) => (
+            <div class="table__row table__row--5">
+              <span>{notification.title}</span>
+
+              <span>{notification.type}</span>
+
+              <span
+                class={notification.is_read ? "status-success" : "status-error"}
+              >
+                {notification.is_read ? "Lida" : "Não lida"}
+              </span>
+
+              <span>
+                {new Date(notification.created_at).toLocaleString("pt-BR")}
+              </span>
+
+              <span>
+                {!notification.is_read && (
+                  <NotificationActions id={notification.id} />
+                )}
+              </span>
+            </div>
+          ))
+        )
+      }
+    </div>
+  </section>
+</DashboardLayout>
