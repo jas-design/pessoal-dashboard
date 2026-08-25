@@ -6,7 +6,14 @@ export interface DashboardMetric {
   variation: number;
   comparison_label: string;
   icon: string;
+  user_id: string;
+  period_month: string;
   period: string;
+  metric_order: number;
+  metric_unit: "currency" | "percentage" | "number";
+  currency: string;
+  source: "manual" | "import" | "calculated" | "n8n";
+  metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 }

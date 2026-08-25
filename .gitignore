@@ -17,6 +17,36 @@ pnpm-debug.log*
 .env
 .env.*
 !.env.example
+.env.keys
+
+# private keys, certificates and local credential exports
+*.pem
+*.key
+*.p8
+*.p12
+*.jks
+*.keystore
+*service-role*
+*service_role*
+*secret*
+*secrets*
+*credential*
+*credentials*
+
+# Supabase local CLI state
+supabase/.temp/
+supabase/.branches/
+supabase/.env
+supabase/.env.*
+
+# database dumps and local backups
+*.dump
+*.backup
+*.bak
+*.sql.gz
+*.tar.gz
+backups/
+dumps/
 
 # macOS-specific files
 .DS_Store

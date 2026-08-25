@@ -76,6 +76,34 @@ Campos conceituais:
 - `confidence_score`
 - `created_at`
 
+### dashboard_metrics
+
+Indicadores mensais exibidos nos cards principais do dashboard.
+
+Campos principais:
+
+- `id`
+- `user_id`
+- `period_month`: primeiro dia do mes de referencia, por exemplo `2024-05-01`
+- `metric_key`: chave estavel do card, como `monthly_revenue`
+- `metric_label`
+- `metric_value`: `numeric`, inclusive para dinheiro
+- `variation`: variacao percentual ou pontos percentuais conforme o card
+- `comparison_label`
+- `icon`
+- `period`: representacao textual `YYYY-MM`
+- `metric_order`
+- `metric_unit`: `currency`, `percentage` ou `number`
+- `currency`
+- `source`
+- `metadata`
+- `created_at`
+- `updated_at`
+
+Para cada mes, cadastrar uma linha por card. O exemplo `Maio/2024` deve ter,
+no minimo, as linhas `monthly_revenue`, `monthly_net_profit`, `net_margin` e
+`cash_balance`. A chave unica operacional e `user_id + period_month + metric_key`.
+
 ### agent_approvals
 
 - `id`

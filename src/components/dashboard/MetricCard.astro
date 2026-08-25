@@ -1,23 +1,201 @@
 ---
+import chartIcon from "../../assets/svg/metric-chart.svg?raw";
+import currencyIcon from "../../assets/svg/metric-currency.svg?raw";
+import percentIcon from "../../assets/svg/metric-percent.svg?raw";
+import walletIcon from "../../assets/svg/metric-wallet.svg?raw";
+
 const {
+  metricKey = "",
   title,
   value,
   variation,
   comparison = "vs ontem",
-  icon = "⚡",
-  type = "positive",
+  icon = "",
+  index = 0,
+  metricUnit = "currency",
+  currency = "BRL",
 } = Astro.props;
 
 const isPositive = Number(variation) >= 0;
+const isStatusComparison = `${comparison}`.toLowerCase().includes("atualizado");
+
+const palettePresets = [
+  {
+    accent: "#22c55e",
+    accentSoft: "rgba(34, 197, 94, 0.14)",
+    accentGlow: "rgba(34, 197, 94, 0.2)",
+  },
+  {
+    accent: "#2563eb",
+    accentSoft: "rgba(37, 99, 235, 0.14)",
+    accentGlow: "rgba(37, 99, 235, 0.2)",
+  },
+  {
+    accent: "#7c3aed",
+    accentSoft: "rgba(124, 58, 237, 0.14)",
+    accentGlow: "rgba(124, 58, 237, 0.2)",
+  },
+  {
+    accent: "#f97316",
+    accentSoft: "rgba(249, 115, 22, 0.14)",
+    accentGlow: "rgba(249, 115, 22, 0.2)",
+  },
+];
+
+function resolvePalette(key: string, metricIndex: number) {
+  const normalizedKey = `${key}`.toLowerCase();
+
+  if (
+    normalizedKey.includes("revenue") ||
+    normalizedKey.includes("fatur") ||
+    normalizedKey.includes("receita")
+  ) {
+    return palettePresets[0];
+  }
+
+  if (
+    normalizedKey.includes("profit") ||
+    normalizedKey.includes("lucro") ||
+    normalizedKey.includes("earn")
+  ) {
+    return palettePresets[1];
+  }
+
+  if (
+    normalizedKey.includes("margin") ||
+    normalizedKey.includes("margem") ||
+    normalizedKey.includes("percent")
+  ) {
+    return palettePresets[2];
+  }
+
+  if (
+    normalizedKey.includes("cash") ||
+    normalizedKey.includes("saldo") ||
+    normalizedKey.includes("caixa")
+  ) {
+    return palettePresets[3];
+  }
+
+  return palettePresets[metricIndex % palettePresets.length];
+}
+
+const sparklineSeries = [
+  [30, 38, 37, 46, 39, 40, 40, 54, 38, 37, 46, 45, 38, 49, 44, 41, 58, 53, 56, 54, 72],
+  [28, 36, 35, 41, 37, 46, 43, 48, 36, 39, 37, 34, 38, 41, 50, 46, 49, 47, 59, 72],
+  [34, 44, 43, 51, 40, 42, 39, 54, 47, 55, 54, 37, 39, 42, 38, 44, 39, 52, 49, 63],
+  [29, 35, 34, 43, 36, 41, 39, 46, 48, 34, 37, 31, 39, 35, 33, 47, 42, 43, 54],
+];
+
+function createSparkPath(values: number[]) {
+  const width = 240;
+  const height = 72;
+  const max = Math.max(...values);
+  const min = Math.min(...values);
+  const range = Math.max(max - min, 1);
+
+  return values
+    .map((point, pointIndex) => {
+      const x = (pointIndex / (values.length - 1)) * width;
+      const y = height - ((point - min) / range) * (height - 6) - 3;
+
+      return `${pointIndex === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
+    })
+    .join(" ");
+}
+
+function createAreaPath(linePath: string) {
+  return `${linePath} L 240 72 L 0 72 Z`;
+}
+
+function resolveIconName(key: string, fallbackIcon: string) {
+  const normalizedKey = `${key} ${fallbackIcon}`.toLowerCase();
+
+  if (
+    normalizedKey.includes("dollar") ||
+    normalizedKey.includes("money") ||
+    normalizedKey.includes("fatur") ||
+    normalizedKey.includes("receita")
+  ) {
+    return "currency";
+  }
+
+  if (
+    normalizedKey.includes("profit") ||
+    normalizedKey.includes("lucro") ||
+    normalizedKey.includes("chart")
+  ) {
+    return "chart";
+  }
+
+  if (
+    normalizedKey.includes("margin") ||
+    normalizedKey.includes("margem") ||
+    normalizedKey.includes("%") ||
+    normalizedKey.includes("percent")
+  ) {
+    return "percent";
+  }
+
+  if (
+    normalizedKey.includes("cash") ||
+    normalizedKey.includes("wallet") ||
+    normalizedKey.includes("saldo") ||
+    normalizedKey.includes("caixa")
+  ) {
+    return "wallet";
+  }
+
+  return "chart";
+}
+
+const palette = resolvePalette(metricKey || title, index);
+const sparklineValues = sparklineSeries[index % sparklineSeries.length];
+const sparklinePath = createSparkPath(sparklineValues);
+const sparklineAreaPath = createAreaPath(sparklinePath);
+const iconName = resolveIconName(metricKey || title, icon);
+const metricIcons: Record<string, string> = {
+  chart: chartIcon,
+  currency: currencyIcon,
+  percent: percentIcon,
+  wallet: walletIcon,
+};
+const metricIconSvg = metricIcons[iconName] ?? chartIcon;
+const numericValue = Number(value) || 0;
+const formattedValue =
+  metricUnit === "currency"
+    ? numericValue.toLocaleString("pt-BR", {
+        style: "currency",
+        currency,
+        maximumFractionDigits: 0,
+      })
+    : metricUnit === "percentage"
+      ? `${numericValue.toLocaleString("pt-BR", {
+          minimumFractionDigits: 1,
+          maximumFractionDigits: 1,
+        })}%`
+      : numericValue.toLocaleString("pt-BR");
+const formattedVariation = Math.abs(Number(variation) || 0).toLocaleString("pt-BR", {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 1,
+});
+const variationSuffix = `${comparison}`.toLowerCase().includes("p.p.") ? "" : "%";
 ---
 
-<article class="metric-card">
+<article
+  class="metric-card metric-card--showcase"
+  style={`--metric-accent: ${palette.accent}; --metric-accent-soft: ${palette.accentSoft}; --metric-accent-glow: ${palette.accentGlow};`}
+>
   <div class="metric-card__top">
-    <span>{title}</span>
-    <div class="metric-card__icon">{icon}</div>
-  </div>
+    <div class="metric-card__icon" aria-hidden="true">
+      <Fragment set:html={metricIconSvg} />
+    </div>
 
-  <strong>{value}</strong>
+    <div class="metric-card__copy">
+      <span>{title}</span>
+      <strong>{formattedValue}</strong>
+    </div>
+  </div>
 
   <p
     class:list={[
@@ -25,7 +203,29 @@ const isPositive = Number(variation) >= 0;
       isPositive ? "is-positive" : "is-negative",
     ]}
   >
-    {isPositive ? "↗" : "↘"}
-    {variation}% {comparison}
+    {
+      isStatusComparison ? (
+        comparison
+      ) : (
+        <>
+          <span class="metric-card__trend">{isPositive ? "+" : "-"}</span>
+          {formattedVariation}{variationSuffix} {comparison}
+        </>
+      )
+    }
   </p>
+
+  <div class="metric-card__sparkline" aria-hidden="true">
+    <svg viewBox="0 0 240 72" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id={`metric-area-${index}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="var(--metric-accent)" stop-opacity="0.26" />
+          <stop offset="100%" stop-color="var(--metric-accent)" stop-opacity="0" />
+        </linearGradient>
+      </defs>
+
+      <path d={sparklineAreaPath} fill={`url(#metric-area-${index})`}></path>
+      <path d={sparklinePath} class="metric-card__sparkline-line"></path>
+    </svg>
+  </div>
 </article>

@@ -1,8 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
+import { publicEnv } from '../env/public';
 
 const supabaseBrowser = createClient(
-  import.meta.env.PUBLIC_SUPABASE_URL,
-  import.meta.env.PUBLIC_SUPABASE_ANON_KEY,
+  publicEnv.supabaseUrl,
+  publicEnv.supabaseAnonKey,
   {
     auth: {
       persistSession: true,

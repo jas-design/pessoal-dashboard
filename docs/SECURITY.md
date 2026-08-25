@@ -33,6 +33,10 @@ Nunca colocar no frontend:
 
 No Astro, `PUBLIC_*` é acessível no navegador.
 
+Arquivos `.env`, `.env.*`, chaves privadas, dumps e estado local do Supabase CLI
+nao devem ser enviados ao GitHub. Use `.env.example` apenas com nomes de
+variaveis e valores vazios.
+
 ## Fronteira de confiança
 
 ```text

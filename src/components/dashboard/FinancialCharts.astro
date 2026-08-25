@@ -1,0 +1,158 @@
+---
+const { metrics = [] } = Astro.props;
+
+const metricLabels = metrics.map((metric) => metric.metric_label);
+const metricValues = metrics.map((metric) => Number(metric.metric_value) || 0);
+const totalValue = metricValues.reduce((sum, value) => sum + value, 0);
+---
+
+<section class="financial-visuals">
+  <article class="financial-chart card">
+    <div class="card__header">
+      <div>
+        <h2>Panorama financeiro</h2>
+        <p>Leitura consolidada dos indicadores essenciais cadastrados no painel.</p>
+      </div>
+    </div>
+
+    {
+      metrics.length === 0 ? (
+        <div class="empty-state financial-chart__empty">
+          <div>
+            <h3>Sem dados para o grafico</h3>
+            <p>Assim que os indicadores forem registrados, o resumo aparecera aqui.</p>
+          </div>
+        </div>
+      ) : (
+        <div
+          id="financial-bar-chart"
+          data-labels={JSON.stringify(metricLabels)}
+          data-values={JSON.stringify(metricValues)}
+        ></div>
+      )
+    }
+  </article>
+
+  <article class="financial-chart card">
+    <div class="card__header">
+      <div>
+        <h2>Visualizacao em pie</h2>
+        <p>Distribuicao proporcional dos mesmos indicadores financeiros.</p>
+      </div>
+
+      <span class="financial-chart__total">Total: {totalValue}</span>
+    </div>
+
+    {
+      metrics.length === 0 ? (
+        <div class="empty-state financial-chart__empty">
+          <div>
+            <h3>Sem distribuicao para exibir</h3>
+            <p>Cadastre indicadores com valor para gerar o pie chart.</p>
+          </div>
+        </div>
+      ) : (
+        <div
+          id="financial-pie-chart"
+          data-labels={JSON.stringify(metricLabels)}
+          data-values={JSON.stringify(metricValues)}
+        ></div>
+      )
+    }
+  </article>
+</section>
+
+<script>
+  import ApexCharts from "apexcharts";
+
+  const barChartElement = document.querySelector("#financial-bar-chart");
+  const pieChartElement = document.querySelector("#financial-pie-chart");
+
+  if (barChartElement) {
+    const labels = JSON.parse(barChartElement.dataset.labels || "[]");
+    const values = JSON.parse(barChartElement.dataset.values || "[]");
+
+    const barChart = new ApexCharts(barChartElement, {
+      chart: {
+        type: "bar",
+        height: 320,
+        toolbar: { show: false },
+        background: "transparent",
+      },
+      series: [
+        {
+          name: "Valor",
+          data: values,
+        },
+      ],
+      colors: ["#00d084"],
+      plotOptions: {
+        bar: {
+          borderRadius: 8,
+          columnWidth: "52%",
+        },
+      },
+      dataLabels: {
+        enabled: false,
+      },
+      xaxis: {
+        categories: labels,
+        labels: {
+          style: {
+            colors: "#94a3b8",
+          },
+        },
+      },
+      yaxis: {
+        labels: {
+          style: {
+            colors: "#94a3b8",
+          },
+        },
+      },
+      grid: {
+        borderColor: "#263244",
+        strokeDashArray: 4,
+      },
+      tooltip: {
+        theme: "dark",
+      },
+      legend: {
+        show: false,
+      },
+    });
+
+    barChart.render();
+  }
+
+  if (pieChartElement) {
+    const labels = JSON.parse(pieChartElement.dataset.labels || "[]");
+    const values = JSON.parse(pieChartElement.dataset.values || "[]");
+
+    const pieChart = new ApexCharts(pieChartElement, {
+      chart: {
+        type: "pie",
+        height: 320,
+        toolbar: { show: false },
+        background: "transparent",
+      },
+      series: values,
+      labels,
+      colors: ["#00d084", "#3b82f6", "#8b5cf6", "#f59e0b", "#ff3b57"],
+      stroke: {
+        colors: ["#111827"],
+      },
+      legend: {
+        position: "bottom",
+        labels: {
+          colors: "#cbd5e1",
+        },
+      },
+      tooltip: {
+        theme: "dark",
+      },
+    });
+
+    pieChart.render();
+  }
+</script>

@@ -1,64 +1,311 @@
 ---
 import DashboardLayout from "../layouts/DashboardLayout.astro";
-import ActivityFeed from "../components/dashboard/ActivityFeed.astro";
-import AutomationChart from "../components/dashboard/AutomationChart.astro";
-import IntegrationCard from "../components/dashboard/IntegrationCard.astro";
-import MetricCard from "../components/dashboard/MetricCard.astro";
+import FinancialCharts from "../components/dashboard/FinancialCharts.astro";
 import "../styles/pages/dashboard.scss";
-
-import { getRecentActivities } from "../services/activity/activities";
-import { getAutomationDailyStats } from "../services/dashboard/charts";
-import { getDashboardMetrics } from "../services/dashboard/metrics";
-import { getIntegrations } from "../services/integrations/integrations";
-
-const [metrics, chartStats, activities, integrations] = await Promise.all([
-  getDashboardMetrics(),
-  getAutomationDailyStats(),
-  getRecentActivities(),
-  getIntegrations(),
-]);
 ---
 
-<DashboardLayout>
-  <section class="metrics-grid">
-    {
-      metrics.map((metric) => (
-        <MetricCard
-          title={metric.metric_label}
-          value={metric.metric_value}
-          variation={metric.variation}
-          comparison={metric.comparison_label}
-          icon={metric.icon}
-        />
-      ))
-    }
+<DashboardLayout
+  title="Dashboard Financeiro"
+  subtitle="Resumo essencial dos indicadores que importam para sua leitura financeira."
+>
+  <section class="metrics-grid" id="dashboard-metrics-grid" aria-live="polite">
+    <div class="metrics-grid__state">Carregando metricas...</div>
   </section>
 
-  <section class="dashboard-grid">
-    <AutomationChart stats={chartStats} />
-    <ActivityFeed activities={activities} />
-  </section>
-
-  <section class="section-heading">
-    <h2>Status das Integrações SaaS</h2>
-    <p>Conexões de API ativas e monitoramento de canais externos</p>
-  </section>
-
-  <section class="integrations-grid">
-    {
-      integrations.map((integration) => (
-        <IntegrationCard
-          name={integration.name}
-          tag={integration.api_version}
-          status={
-            integration.status === "connected" ? "Conectado" : "Desconectado"
-          }
-          stats={[
-            { label: "Tipo:", value: integration.type },
-            { label: "Status:", value: integration.status },
-          ]}
-        />
-      ))
-    }
-  </section>
+  <FinancialCharts metrics={[]} />
 </DashboardLayout>
+
+<script>
+  import chartIcon from "../assets/svg/metric-chart.svg?raw";
+  import currencyIcon from "../assets/svg/metric-currency.svg?raw";
+  import percentIcon from "../assets/svg/metric-percent.svg?raw";
+  import walletIcon from "../assets/svg/metric-wallet.svg?raw";
+  import supabase from "../lib/supabase/browser";
+
+  const palettePresets = [
+    {
+      accent: "#22c55e",
+      accentSoft: "rgba(34, 197, 94, 0.14)",
+      accentGlow: "rgba(34, 197, 94, 0.2)",
+    },
+    {
+      accent: "#2563eb",
+      accentSoft: "rgba(37, 99, 235, 0.14)",
+      accentGlow: "rgba(37, 99, 235, 0.2)",
+    },
+    {
+      accent: "#7c3aed",
+      accentSoft: "rgba(124, 58, 237, 0.14)",
+      accentGlow: "rgba(124, 58, 237, 0.2)",
+    },
+    {
+      accent: "#f97316",
+      accentSoft: "rgba(249, 115, 22, 0.14)",
+      accentGlow: "rgba(249, 115, 22, 0.2)",
+    },
+  ];
+
+  const metricIcons = {
+    chart: chartIcon,
+    currency: currencyIcon,
+    percent: percentIcon,
+    wallet: walletIcon,
+  };
+
+  const sparklineSeries = [
+    [30, 38, 37, 46, 39, 40, 40, 54, 38, 37, 46, 45, 38, 49, 44, 41, 58, 53, 56, 54, 72],
+    [28, 36, 35, 41, 37, 46, 43, 48, 36, 39, 37, 34, 38, 41, 50, 46, 49, 47, 59, 72],
+    [34, 44, 43, 51, 40, 42, 39, 54, 47, 55, 54, 37, 39, 42, 38, 44, 39, 52, 49, 63],
+    [29, 35, 34, 43, 36, 41, 39, 46, 48, 34, 37, 31, 39, 35, 33, 47, 42, 43, 54],
+  ];
+
+  function resolvePalette(key, metricIndex) {
+    const normalizedKey = `${key}`.toLowerCase();
+
+    if (
+      normalizedKey.includes("revenue") ||
+      normalizedKey.includes("fatur") ||
+      normalizedKey.includes("receita")
+    ) {
+      return palettePresets[0];
+    }
+
+    if (
+      normalizedKey.includes("profit") ||
+      normalizedKey.includes("lucro") ||
+      normalizedKey.includes("earn")
+    ) {
+      return palettePresets[1];
+    }
+
+    if (
+      normalizedKey.includes("margin") ||
+      normalizedKey.includes("margem") ||
+      normalizedKey.includes("percent")
+    ) {
+      return palettePresets[2];
+    }
+
+    if (
+      normalizedKey.includes("cash") ||
+      normalizedKey.includes("saldo") ||
+      normalizedKey.includes("caixa")
+    ) {
+      return palettePresets[3];
+    }
+
+    return palettePresets[metricIndex % palettePresets.length];
+  }
+
+  function resolveIconName(key, fallbackIcon) {
+    const normalizedKey = `${key} ${fallbackIcon}`.toLowerCase();
+
+    if (
+      normalizedKey.includes("dollar") ||
+      normalizedKey.includes("money") ||
+      normalizedKey.includes("fatur") ||
+      normalizedKey.includes("receita")
+    ) {
+      return "currency";
+    }
+
+    if (
+      normalizedKey.includes("profit") ||
+      normalizedKey.includes("lucro") ||
+      normalizedKey.includes("chart")
+    ) {
+      return "chart";
+    }
+
+    if (
+      normalizedKey.includes("margin") ||
+      normalizedKey.includes("margem") ||
+      normalizedKey.includes("%") ||
+      normalizedKey.includes("percent")
+    ) {
+      return "percent";
+    }
+
+    if (
+      normalizedKey.includes("cash") ||
+      normalizedKey.includes("wallet") ||
+      normalizedKey.includes("saldo") ||
+      normalizedKey.includes("caixa")
+    ) {
+      return "wallet";
+    }
+
+    return "chart";
+  }
+
+  function createSparkPath(values) {
+    const width = 240;
+    const height = 72;
+    const max = Math.max(...values);
+    const min = Math.min(...values);
+    const range = Math.max(max - min, 1);
+
+    return values
+      .map((point, pointIndex) => {
+        const x = (pointIndex / (values.length - 1)) * width;
+        const y = height - ((point - min) / range) * (height - 6) - 3;
+
+        return `${pointIndex === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
+      })
+      .join(" ");
+  }
+
+  function formatValue(metric) {
+    const numericValue = Number(metric.metric_value) || 0;
+
+    if (metric.metric_unit === "currency") {
+      return numericValue.toLocaleString("pt-BR", {
+        style: "currency",
+        currency: metric.currency || "BRL",
+        maximumFractionDigits: 0,
+      });
+    }
+
+    if (metric.metric_unit === "percentage") {
+      return `${numericValue.toLocaleString("pt-BR", {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+      })}%`;
+    }
+
+    return numericValue.toLocaleString("pt-BR");
+  }
+
+  function renderMetricCard(metric, index) {
+    const palette = resolvePalette(metric.metric_key || metric.metric_label, index);
+    const iconName = resolveIconName(metric.metric_key || metric.metric_label, metric.icon);
+    const sparklinePath = createSparkPath(sparklineSeries[index % sparklineSeries.length]);
+    const article = document.createElement("article");
+    const isPositive = Number(metric.variation) >= 0;
+    const comparison = `${metric.comparison_label || ""}`;
+    const isStatusComparison = comparison.toLowerCase().includes("atualizado");
+    const variationSuffix = comparison.toLowerCase().includes("p.p.") ? "" : "%";
+    const formattedVariation = Math.abs(Number(metric.variation) || 0).toLocaleString("pt-BR", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 1,
+    });
+
+    article.className = "metric-card metric-card--showcase";
+    article.style.setProperty("--metric-accent", palette.accent);
+    article.style.setProperty("--metric-accent-soft", palette.accentSoft);
+    article.style.setProperty("--metric-accent-glow", palette.accentGlow);
+
+    const top = document.createElement("div");
+    top.className = "metric-card__top";
+
+    const iconContainer = document.createElement("div");
+    iconContainer.className = "metric-card__icon";
+    iconContainer.setAttribute("aria-hidden", "true");
+    iconContainer.innerHTML = metricIcons[iconName] || chartIcon;
+
+    const copy = document.createElement("div");
+    copy.className = "metric-card__copy";
+
+    const title = document.createElement("span");
+    title.textContent = metric.metric_label;
+
+    const value = document.createElement("strong");
+    value.textContent = formatValue(metric);
+
+    copy.append(title, value);
+    top.append(iconContainer, copy);
+
+    const variation = document.createElement("p");
+    variation.className = `metric-card__variation ${isPositive ? "is-positive" : "is-negative"}`;
+
+    if (isStatusComparison) {
+      variation.textContent = comparison;
+    } else {
+      const trend = document.createElement("span");
+      trend.className = "metric-card__trend";
+      trend.textContent = isPositive ? "+" : "-";
+      variation.append(trend, `${formattedVariation}${variationSuffix} ${comparison}`);
+    }
+
+    const sparkline = document.createElement("div");
+    sparkline.className = "metric-card__sparkline";
+    sparkline.setAttribute("aria-hidden", "true");
+    sparkline.innerHTML = `
+      <svg viewBox="0 0 240 72" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="metric-area-client-${index}" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="var(--metric-accent)" stop-opacity="0.26" />
+            <stop offset="100%" stop-color="var(--metric-accent)" stop-opacity="0" />
+          </linearGradient>
+        </defs>
+        <path d="${sparklinePath} L 240 72 L 0 72 Z" fill="url(#metric-area-client-${index})"></path>
+        <path d="${sparklinePath}" class="metric-card__sparkline-line"></path>
+      </svg>
+    `;
+
+    article.append(top, variation, sparkline);
+    return article;
+  }
+
+  function renderState(grid, message) {
+    const state = document.createElement("div");
+    state.className = "metrics-grid__state";
+    state.textContent = message;
+    grid.replaceChildren(state);
+  }
+
+  async function loadDashboardMetrics() {
+    const grid = document.querySelector("#dashboard-metrics-grid");
+
+    if (!grid) {
+      return;
+    }
+
+    const { data: sessionData } = await supabase.auth.getSession();
+
+    if (!sessionData.session) {
+      renderState(grid, "Entre novamente para carregar as metricas.");
+      return;
+    }
+
+    const { data: latestMetric, error: latestError } = await supabase
+      .from("dashboard_metrics")
+      .select("period_month")
+      .not("period_month", "is", null)
+      .order("period_month", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (latestError) {
+      console.error("Erro ao buscar periodo das metricas:", latestError.message);
+      renderState(grid, "Nao foi possivel carregar as metricas.");
+      return;
+    }
+
+    if (!latestMetric?.period_month) {
+      renderState(grid, "Nenhuma metrica cadastrada no Supabase.");
+      return;
+    }
+
+    const { data: metrics, error } = await supabase
+      .from("dashboard_metrics")
+      .select("*")
+      .eq("period_month", latestMetric.period_month)
+      .order("metric_order", { ascending: true });
+
+    if (error) {
+      console.error("Erro ao buscar metricas:", error.message);
+      renderState(grid, "Nao foi possivel carregar as metricas.");
+      return;
+    }
+
+    if (!metrics?.length) {
+      renderState(grid, "Nenhuma metrica cadastrada para este mes.");
+      return;
+    }
+
+    grid.replaceChildren(...metrics.map((metric, index) => renderMetricCard(metric, index)));
+  }
+
+  loadDashboardMetrics();
+</script>
