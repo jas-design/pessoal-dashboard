@@ -1,9 +1,11 @@
 ---
+import FinancialPeriodSelect from "../financial/FinancialPeriodSelect.astro";
 import { getUnreadNotificationsCount } from "../../services/notifications/notifications";
 
 const {
   title = "Olá, Andres 👋",
   subtitle = "Aqui está o resumo das suas operações de hoje.",
+  showFinancialPeriod = false,
 } = Astro.props;
 
 const unreadCount = await getUnreadNotificationsCount();
@@ -16,17 +18,12 @@ const unreadCount = await getUnreadNotificationsCount();
   </div>
 
   <div class="header__actions">
-    <div class="header__search">
-      <span>⌕</span>
-      <input type="text" placeholder="Buscar transações, e-mails, logs..." />
-    </div>
+    {showFinancialPeriod && <FinancialPeriodSelect />}
 
     <a href="/notificacoes" class="header__notification">
       🔔
       {unreadCount > 0 && <span>{unreadCount}</span>}
     </a>
-
-    <div class="header__avatar">AB</div>
 
     <button class="header__logout" id="logout-button"> Sair </button>
   </div>

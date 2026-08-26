@@ -1,8 +1,8 @@
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(180px, 1fr));
-  gap: 22px;
-  margin-bottom: 32px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 28px;
 
   &__state {
     grid-column: 1 / -1;
@@ -21,48 +21,60 @@
   --metric-accent: var(--green);
   --metric-accent-soft: rgba(0, 208, 132, 0.14);
   --metric-accent-glow: rgba(0, 208, 132, 0.2);
-  min-height: 228px;
+  height: 206px;
   background:
-    radial-gradient(circle at top left, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0) 32%),
-    linear-gradient(180deg, #ffffff, #f8fbff);
-  border: 1px solid rgba(225, 232, 241, 0.92);
-  border-radius: 22px;
+    radial-gradient(circle at 88% 4%, var(--metric-accent-glow), rgba(255, 255, 255, 0) 30%),
+    linear-gradient(180deg, rgba(18, 27, 46, 0.98) 0%, rgba(10, 16, 29, 0.98) 100%);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 18px;
   box-shadow:
-    0 20px 40px rgba(15, 23, 42, 0.08),
-    0 2px 8px rgba(15, 23, 42, 0.04);
+    0 18px 38px rgba(2, 6, 23, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   overflow: hidden;
-  padding: 22px 22px 18px;
+  padding: 18px 20px 0;
+
+  &:nth-child(4) {
+    --metric-accent: #e5e7eb;
+    --metric-accent-soft: rgba(226, 232, 240, 0.13);
+    --metric-accent-glow: rgba(226, 232, 240, 0.12);
+  }
 
   &__top {
     display: flex;
-    gap: 16px;
+    flex-direction: row-reverse;
     align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: 84px;
 
     span {
-      color: #6b7280;
+      color: #9aa8bd;
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      font-size: 12px;
-      font-weight: 700;
+      font-size: 10px;
+      font-weight: 850;
+      line-height: 1.2;
     }
   }
 
   &__icon {
     flex-shrink: 0;
-    width: 58px;
-    height: 58px;
+    width: 46px;
+    height: 46px;
     border-radius: 50%;
-    background: var(--metric-accent-soft);
+    background:
+      radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0) 46%),
+      var(--metric-accent-soft);
     color: var(--metric-accent);
     display: grid;
     place-items: center;
 
     svg {
-      width: 26px;
-      height: 26px;
+      width: 21px;
+      height: 21px;
       stroke: currentColor;
       stroke-width: 1.9;
       stroke-linecap: round;
@@ -73,22 +85,29 @@
   &__copy {
     min-width: 0;
     display: grid;
-    gap: 4px;
+    gap: 12px;
+    padding-top: 2px;
   }
 
   strong {
-    color: #0f172a;
-    font-size: clamp(1.75rem, 1.2rem + 1vw, 2.15rem);
+    color: #f8fafc;
+    font-size: clamp(1.65rem, 1.02rem + 0.98vw, 2rem);
     line-height: 1.05;
-    font-weight: 800;
+    font-weight: 850;
+    letter-spacing: -0.045em;
+    white-space: nowrap;
   }
 
   &__variation {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    font-size: 0.98rem;
-    font-weight: 600;
+    min-height: 18px;
+    margin-top: -6px;
+    color: #94a3b8;
+    font-size: 11.5px;
+    font-weight: 800;
+    line-height: 1.25;
 
     &.is-positive {
       color: #16a34a;
@@ -97,27 +116,32 @@
     &.is-negative {
       color: #dc2626;
     }
+
+    &.is-neutral {
+      color: #53657d;
+    }
   }
 
   &__trend {
-    font-size: 1.05rem;
-    font-weight: 800;
+    font-size: 0.9rem;
+    font-weight: 900;
     line-height: 1;
   }
 
   &__sparkline {
     margin-top: auto;
     margin-left: -6px;
-    margin-right: -8px;
-    height: 78px;
+    margin-right: -6px;
+    margin-bottom: 0;
+    height: 54px;
     position: relative;
 
     &::after {
       content: "";
       position: absolute;
       inset: auto 0 0;
-      height: 38px;
-      background: linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(248, 251, 255, 0.95));
+      height: 22px;
+      background: linear-gradient(180deg, rgba(10, 16, 29, 0), rgba(10, 16, 29, 0.78));
       pointer-events: none;
     }
 
@@ -131,10 +155,10 @@
   &__sparkline-line {
     fill: none;
     stroke: var(--metric-accent);
-    stroke-width: 2.25;
+    stroke-width: 1.65;
     stroke-linecap: round;
     stroke-linejoin: round;
-    filter: drop-shadow(0 6px 12px var(--metric-accent-glow));
+    filter: drop-shadow(0 5px 8px var(--metric-accent-glow));
   }
 }
 

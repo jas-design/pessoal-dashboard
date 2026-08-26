@@ -1,20 +1,21 @@
 ---
-import BaseLayout from "./BaseLayout.astro";
-import Sidebar from "../components/layout/Sidebar.astro";
-import Header from "../components/layout/Header.astro";
 import AuthGuard from "../components/layout/AuthGuard.astro";
+import Header from "../components/layout/Header.astro";
+import Sidebar from "../components/layout/Sidebar.astro";
+import BaseLayout from "./BaseLayout.astro";
 import "../styles/layouts/dashboard.scss";
+import "../styles/layouts/header.scss";
 
 interface Props {
   title?: string;
-
   subtitle?: string;
+  showFinancialPeriod?: boolean;
 }
 
 const {
   title = "Olá, Andres 👋",
-
   subtitle = "Aqui está o resumo das suas operações de hoje.",
+  showFinancialPeriod = false,
 } = Astro.props;
 ---
 
@@ -25,7 +26,11 @@ const {
     <Sidebar />
 
     <main class="dashboard-main">
-      <Header title={title} subtitle={subtitle} />
+      <Header
+        title={title}
+        subtitle={subtitle}
+        showFinancialPeriod={showFinancialPeriod}
+      />
 
       <section class="dashboard-content">
         <slot />

@@ -1,67 +1,76 @@
 ---
-import {
-  createSparkPath,
-  formatMetricValue,
-  metricIcons,
-  resolveIconName,
-  resolvePalette,
-  sparklineSeries,
-  type MonthlyFinancialMetric,
-} from "../../services/financial/monthly-metrics";
+import chartIcon from "../../assets/svg/metric-chart.svg?raw";
+import currencyIcon from "../../assets/svg/metric-currency.svg?raw";
+import percentIcon from "../../assets/svg/metric-percent.svg?raw";
+import walletIcon from "../../assets/svg/metric-wallet.svg?raw";
+
+type MetricIcon = "chart" | "currency" | "percent" | "wallet";
+type MetricTone = "positive" | "negative" | "neutral";
 
 interface Props {
-  metric: MonthlyFinancialMetric;
+  title: string;
+  value: string;
+  icon: MetricIcon;
+  accent: string;
+  accentSoft: string;
+  accentGlow: string;
+  sparklinePath: string;
   index: number;
+  variation?: string;
+  tone?: MetricTone;
 }
 
-const { metric, index } = Astro.props;
-const palette = resolvePalette(metric.metric_key || metric.metric_label, index);
-const iconName = resolveIconName(metric.metric_key || metric.metric_label, metric.icon);
-const metricIconSvg = metricIcons[iconName] ?? metricIcons.chart;
-const sparklinePath = createSparkPath(sparklineSeries[index % sparklineSeries.length]);
+const {
+  title,
+  value,
+  icon,
+  accent,
+  accentSoft,
+  accentGlow,
+  sparklinePath,
+  index,
+  variation,
+  tone = "neutral",
+} = Astro.props;
+
+const metricIcons: Record<MetricIcon, string> = {
+  chart: chartIcon,
+  currency: currencyIcon,
+  percent: percentIcon,
+  wallet: walletIcon,
+};
+
 const sparklineAreaPath = `${sparklinePath} L 240 72 L 0 72 Z`;
-const isPositive = Number(metric.variation) >= 0;
-const comparison = `${metric.comparison_label || ""}`;
-const isStatusComparison = comparison.toLowerCase().includes("atualizado");
-const variationSuffix = comparison.toLowerCase().includes("p.p.") ? "" : "%";
-const formattedVariation = Math.abs(Number(metric.variation) || 0).toLocaleString("pt-BR", {
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 1,
-});
 ---
 
 <article
   class="metric-card metric-card--showcase"
-  style={`--metric-accent: ${palette.accent}; --metric-accent-soft: ${palette.accentSoft}; --metric-accent-glow: ${palette.accentGlow};`}
+  style={`--metric-accent: ${accent}; --metric-accent-soft: ${accentSoft}; --metric-accent-glow: ${accentGlow};`}
 >
   <div class="metric-card__top">
     <div class="metric-card__icon" aria-hidden="true">
-      <Fragment set:html={metricIconSvg} />
+      <Fragment set:html={metricIcons[icon]} />
     </div>
 
     <div class="metric-card__copy">
-      <span>{metric.metric_label}</span>
-      <strong>{formatMetricValue(metric)}</strong>
+      <span>{title}</span>
+      <strong>{value}</strong>
     </div>
   </div>
 
-  <p
-    class:list={[
-      "metric-card__variation",
-      isPositive ? "is-positive" : "is-negative",
-    ]}
-  >
-    {
-      isStatusComparison ? (
-        comparison
-      ) : (
-        <>
-          <span class="metric-card__trend">{isPositive ? "+" : "-"}</span>
-          {formattedVariation}{variationSuffix} {comparison}
-        </>
-      )
-    }
-  </p>
+  {
+    variation && (
+      <p
+        class:list={[
+          "metric-card__variation",
+          tone === "positive" && "is-positive",
+          tone === "negative" && "is-negative",
+        ]}
+      >
+        {variation}
+      </p>
+    )
+  }
 
   <div class="metric-card__sparkline" aria-hidden="true">
     <svg viewBox="0 0 240 72" preserveAspectRatio="none">

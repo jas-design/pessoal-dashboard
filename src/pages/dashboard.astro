@@ -7,6 +7,7 @@ import "../styles/pages/dashboard.scss";
 <DashboardLayout
   title="Dashboard Financeiro"
   subtitle="Resumo essencial dos indicadores que importam para sua leitura financeira."
+  showFinancialPeriod
 >
   <section class="metrics-grid" id="dashboard-metrics-grid" aria-live="polite">
     <div class="metrics-grid__state">Carregando metricas...</div>
@@ -25,8 +26,9 @@ import "../styles/pages/dashboard.scss";
     getFinancialMetricHistory,
     getMonthlyFinancialMetrics,
     getPreviousMonthFinancialMetrics,
+    type FinancialPeriod,
+    type MonthlyFinancialMetrics,
   } from "../services/financial/monthly-metrics";
-  import supabase from "../lib/supabase/browser";
 
   const metricIcons = {
     chart: chartIcon,
@@ -38,7 +40,7 @@ import "../styles/pages/dashboard.scss";
   const metricDefinitions = [
     {
       key: "revenue",
-      label: "Faturamento (mes)",
+      label: "FATURAMENTO (MÊS)",
       icon: "currency",
       unit: "currency",
       color: {
@@ -49,7 +51,7 @@ import "../styles/pages/dashboard.scss";
     },
     {
       key: "net_profit",
-      label: "Lucro liquido (mes)",
+      label: "LUCRO LÍQUIDO (MÊS)",
       icon: "chart",
       unit: "currency",
       color: {
@@ -60,7 +62,7 @@ import "../styles/pages/dashboard.scss";
     },
     {
       key: "net_margin",
-      label: "Margem liquida",
+      label: "MARGEM LÍQUIDA",
       icon: "percent",
       unit: "percentage",
       color: {
@@ -71,7 +73,7 @@ import "../styles/pages/dashboard.scss";
     },
     {
       key: "cash_balance",
-      label: "Saldo em caixa",
+      label: "SALDO EM CAIXA",
       icon: "wallet",
       unit: "currency",
       color: {
@@ -80,20 +82,50 @@ import "../styles/pages/dashboard.scss";
         accentGlow: "rgba(249, 115, 22, 0.2)",
       },
     },
-  ];
+  ] as const;
 
-  function renderState(grid, message) {
+  type MetricDefinition = (typeof metricDefinitions)[number];
+  type MetricKey = MetricDefinition["key"];
+  type MetricUnit = MetricDefinition["unit"];
+
+  function renderState(grid: Element, message: string) {
     const state = document.createElement("div");
     state.className = "metrics-grid__state";
     state.textContent = message;
     grid.replaceChildren(state);
   }
 
-  function formatValue(value, unit) {
-    const numericValue = Number(value) || 0;
+  function readPeriodFromUrl(): FinancialPeriod | null {
+    const params = new URLSearchParams(window.location.search);
+    const year = Number(params.get("year"));
+    const month = Number(params.get("month"));
+
+    if (!Number.isInteger(year) || !Number.isInteger(month)) {
+      return null;
+    }
+
+    if (month < 1 || month > 12) {
+      return null;
+    }
+
+    return { year, month };
+  }
+
+  function resolveSelectedPeriod(periods: FinancialPeriod[]) {
+    return readPeriodFromUrl() ?? periods[0] ?? null;
+  }
+
+  function isRealNumber(value: number | null): value is number {
+    return typeof value === "number" && Number.isFinite(value);
+  }
+
+  function formatValue(value: number | null, unit: MetricUnit) {
+    if (!isRealNumber(value)) {
+      return "Sem dados";
+    }
 
     if (unit === "currency") {
-      return numericValue.toLocaleString("pt-BR", {
+      return value.toLocaleString("pt-BR", {
         style: "currency",
         currency: "BRL",
         maximumFractionDigits: 0,
@@ -101,16 +133,16 @@ import "../styles/pages/dashboard.scss";
     }
 
     if (unit === "percentage") {
-      return `${numericValue.toLocaleString("pt-BR", {
+      return `${value.toLocaleString("pt-BR", {
         minimumFractionDigits: 1,
         maximumFractionDigits: 1,
       })}%`;
     }
 
-    return numericValue.toLocaleString("pt-BR");
+    return value.toLocaleString("pt-BR");
   }
 
-  function formatPeriodLabel(year, month) {
+  function formatPeriodLabel(year: number, month: number) {
     const date = new Date(year, month - 1, 1);
     const label = date.toLocaleDateString("pt-BR", {
       month: "short",
@@ -120,10 +152,7 @@ import "../styles/pages/dashboard.scss";
     return label.replace(".", "");
   }
 
-  function calculateVariation(currentValue, previousValue, unit) {
-    const current = Number(currentValue) || 0;
-    const previous = Number(previousValue) || 0;
-
+  function calculateVariation(current: number, previous: number, unit: MetricUnit) {
     if (unit === "percentage") {
       return current - previous;
     }
@@ -135,7 +164,7 @@ import "../styles/pages/dashboard.scss";
     return ((current - previous) / previous) * 100;
   }
 
-  function createSparkPath(values) {
+  function createSparkPath(values: number[]) {
     const width = 240;
     const height = 72;
 
@@ -157,18 +186,17 @@ import "../styles/pages/dashboard.scss";
       .join(" ");
   }
 
-  function renderMetricCard(definition, metrics, previousMetrics, history, index) {
+  function renderMetricCard(
+    definition: MetricDefinition,
+    metrics: MonthlyFinancialMetrics,
+    previousMetrics: MonthlyFinancialMetrics | null,
+    history: MonthlyFinancialMetrics[],
+    index: number
+  ) {
     const value = metrics[definition.key];
-    const previousValue = previousMetrics?.[definition.key] ?? 0;
-    const variationValue = calculateVariation(value, previousValue, definition.unit);
-    const comparison = `vs ${formatPeriodLabel(previousMetrics?.year ?? metrics.year, previousMetrics?.month ?? metrics.month)}`;
-    const isPositive = variationValue >= 0;
-    const formattedVariation = Math.abs(variationValue).toLocaleString("pt-BR", {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 1,
-    });
-    const variationSuffix = definition.unit === "percentage" ? " p.p." : "%";
-    const sparklineValues = history.map((historyMetric) => Number(historyMetric[definition.key]) || 0);
+    const sparklineValues = history
+      .map((historyMetric) => historyMetric[definition.key as MetricKey])
+      .filter(isRealNumber);
     const sparklinePath = createSparkPath(sparklineValues);
     const article = document.createElement("article");
 
@@ -198,12 +226,30 @@ import "../styles/pages/dashboard.scss";
     top.append(iconContainer, copy);
 
     const variation = document.createElement("p");
-    variation.className = `metric-card__variation ${isPositive ? "is-positive" : "is-negative"}`;
+    variation.className = "metric-card__variation";
 
     if (definition.key === "cash_balance") {
-      variation.textContent = "Atualizado hoje";
-    } else {
+      variation.classList.add("is-neutral");
+      variation.textContent = "Atualizado no período";
+    } else if (previousMetrics && isRealNumber(value)) {
+      const previousValue = previousMetrics[definition.key];
+
+      if (!isRealNumber(previousValue)) {
+        article.append(top, sparkline);
+        return article;
+      }
+
+      const variationValue = calculateVariation(value, previousValue, definition.unit);
+      const comparison = `vs ${formatPeriodLabel(previousMetrics.year, previousMetrics.month)}`;
+      const isPositive = variationValue >= 0;
+      const formattedVariation = Math.abs(variationValue).toLocaleString("pt-BR", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 1,
+      });
+      const variationSuffix = definition.unit === "percentage" ? " p.p." : "%";
       const trend = document.createElement("span");
+
+      variation.classList.add(isPositive ? "is-positive" : "is-negative");
       trend.className = "metric-card__trend";
       trend.textContent = isPositive ? "+" : "-";
       variation.append(trend, `${formattedVariation}${variationSuffix} ${comparison}`);
@@ -225,7 +271,13 @@ import "../styles/pages/dashboard.scss";
       </svg>
     `;
 
-    article.append(top, variation, sparkline);
+    article.append(top);
+
+    if (definition.key === "cash_balance" || previousMetrics) {
+      article.append(variation);
+    }
+
+    article.append(sparkline);
     return article;
   }
 
@@ -236,30 +288,23 @@ import "../styles/pages/dashboard.scss";
       return;
     }
 
-    const { data: sessionData } = await supabase.auth.getSession();
-
-    if (!sessionData.session) {
-      renderState(grid, "Entre novamente para carregar as metricas.");
-      return;
-    }
-
     try {
       const periods = await getAvailableFinancialPeriods();
-      const latestPeriod = periods[0];
+      const selectedPeriod = resolveSelectedPeriod(periods);
 
-      if (!latestPeriod) {
-        renderState(grid, "Nenhuma metrica cadastrada no Supabase.");
+      if (!selectedPeriod) {
+        renderState(grid, "Sem dados");
         return;
       }
 
       const [metrics, previousMetrics, history] = await Promise.all([
-        getMonthlyFinancialMetrics(latestPeriod.year, latestPeriod.month),
-        getPreviousMonthFinancialMetrics(latestPeriod.year, latestPeriod.month),
-        getFinancialMetricHistory(latestPeriod.year, latestPeriod.month),
+        getMonthlyFinancialMetrics(selectedPeriod.year, selectedPeriod.month),
+        getPreviousMonthFinancialMetrics(selectedPeriod.year, selectedPeriod.month),
+        getFinancialMetricHistory(selectedPeriod.year, selectedPeriod.month, 6),
       ]);
 
       if (!metrics) {
-        renderState(grid, "Nenhuma metrica cadastrada para este mes.");
+        renderState(grid, "Sem dados");
         return;
       }
 
@@ -270,10 +315,10 @@ import "../styles/pages/dashboard.scss";
       );
     } catch (error) {
       console.error(
-        "Erro ao buscar metricas:",
+        "Erro ao buscar métricas:",
         error instanceof Error ? error.message : error
       );
-      renderState(grid, "Nao foi possivel carregar as metricas.");
+      renderState(grid, "Não foi possível carregar as métricas.");
     }
   }
 

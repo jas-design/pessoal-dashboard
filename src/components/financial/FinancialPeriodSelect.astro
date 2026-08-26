@@ -1,0 +1,100 @@
+<div class="financial-period-select" data-financial-period-select>
+  <span class="financial-period-select__icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24" focusable="false">
+      <path d="M7 3v3" />
+      <path d="M17 3v3" />
+      <path d="M4 9h16" />
+      <path d="M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z" />
+    </svg>
+  </span>
+  <label class="financial-period-select__label" for="financial-period-select">
+    Periodo financeiro
+  </label>
+  <select id="financial-period-select" disabled>
+    <option>Carregando...</option>
+  </select>
+</div>
+
+<script>
+  import { getAvailableFinancialPeriods } from "../../services/financial/monthly-metrics";
+
+  function formatPeriodLabel(year, month) {
+    const monthLabel = new Date(year, month - 1, 1).toLocaleDateString("pt-BR", {
+      month: "long",
+    });
+    const capitalizedMonth =
+      monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
+
+    return `${capitalizedMonth}/${year}`;
+  }
+
+  function readSelectedPeriod(periods) {
+    const params = new URLSearchParams(window.location.search);
+    const year = Number(params.get("year"));
+    const month = Number(params.get("month"));
+    const urlPeriod = periods.find(
+      (period) => period.year === year && period.month === month
+    );
+
+    return urlPeriod ?? periods[0] ?? null;
+  }
+
+  function navigateToPeriod(value) {
+    const [year, month] = value.split("-").map(Number);
+    const url = new URL(window.location.href);
+
+    url.pathname = "/dashboard";
+    url.searchParams.set("year", String(year));
+    url.searchParams.set("month", String(month));
+    window.location.href = url.toString();
+  }
+
+  async function loadFinancialPeriods() {
+    const select = document.querySelector("#financial-period-select");
+
+    if (!(select instanceof HTMLSelectElement)) {
+      return;
+    }
+
+    try {
+      const periods = await getAvailableFinancialPeriods();
+      const selectedPeriod = readSelectedPeriod(periods);
+
+      if (!periods.length || !selectedPeriod) {
+        select.replaceChildren(new Option("Sem periodos", ""));
+        return;
+      }
+
+      select.replaceChildren(
+        ...periods.map((period) => {
+          const value = `${period.year}-${period.month}`;
+          const option = new Option(
+            formatPeriodLabel(period.year, period.month),
+            value
+          );
+
+          option.selected =
+            period.year === selectedPeriod.year &&
+            period.month === selectedPeriod.month;
+
+          return option;
+        })
+      );
+      select.disabled = false;
+
+      select.addEventListener("change", () => {
+        if (select.value) {
+          navigateToPeriod(select.value);
+        }
+      });
+    } catch (error) {
+      console.error(
+        "Erro ao carregar periodos financeiros:",
+        error instanceof Error ? error.message : error
+      );
+      select.replaceChildren(new Option("Erro ao carregar", ""));
+    }
+  }
+
+  loadFinancialPeriods();
+</script>
