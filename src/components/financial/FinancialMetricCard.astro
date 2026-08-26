@@ -1,0 +1,79 @@
+---
+import {
+  createSparkPath,
+  formatMetricValue,
+  metricIcons,
+  resolveIconName,
+  resolvePalette,
+  sparklineSeries,
+  type MonthlyFinancialMetric,
+} from "../../services/financial/monthly-metrics";
+
+interface Props {
+  metric: MonthlyFinancialMetric;
+  index: number;
+}
+
+const { metric, index } = Astro.props;
+const palette = resolvePalette(metric.metric_key || metric.metric_label, index);
+const iconName = resolveIconName(metric.metric_key || metric.metric_label, metric.icon);
+const metricIconSvg = metricIcons[iconName] ?? metricIcons.chart;
+const sparklinePath = createSparkPath(sparklineSeries[index % sparklineSeries.length]);
+const sparklineAreaPath = `${sparklinePath} L 240 72 L 0 72 Z`;
+const isPositive = Number(metric.variation) >= 0;
+const comparison = `${metric.comparison_label || ""}`;
+const isStatusComparison = comparison.toLowerCase().includes("atualizado");
+const variationSuffix = comparison.toLowerCase().includes("p.p.") ? "" : "%";
+const formattedVariation = Math.abs(Number(metric.variation) || 0).toLocaleString("pt-BR", {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 1,
+});
+---
+
+<article
+  class="metric-card metric-card--showcase"
+  style={`--metric-accent: ${palette.accent}; --metric-accent-soft: ${palette.accentSoft}; --metric-accent-glow: ${palette.accentGlow};`}
+>
+  <div class="metric-card__top">
+    <div class="metric-card__icon" aria-hidden="true">
+      <Fragment set:html={metricIconSvg} />
+    </div>
+
+    <div class="metric-card__copy">
+      <span>{metric.metric_label}</span>
+      <strong>{formatMetricValue(metric)}</strong>
+    </div>
+  </div>
+
+  <p
+    class:list={[
+      "metric-card__variation",
+      isPositive ? "is-positive" : "is-negative",
+    ]}
+  >
+    {
+      isStatusComparison ? (
+        comparison
+      ) : (
+        <>
+          <span class="metric-card__trend">{isPositive ? "+" : "-"}</span>
+          {formattedVariation}{variationSuffix} {comparison}
+        </>
+      )
+    }
+  </p>
+
+  <div class="metric-card__sparkline" aria-hidden="true">
+    <svg viewBox="0 0 240 72" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id={`financial-metric-area-${index}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="var(--metric-accent)" stop-opacity="0.26" />
+          <stop offset="100%" stop-color="var(--metric-accent)" stop-opacity="0" />
+        </linearGradient>
+      </defs>
+
+      <path d={sparklineAreaPath} fill={`url(#financial-metric-area-${index})`}></path>
+      <path d={sparklinePath} class="metric-card__sparkline-line"></path>
+    </svg>
+  </div>
+</article>
