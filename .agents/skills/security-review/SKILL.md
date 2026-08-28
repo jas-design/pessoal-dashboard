@@ -1,43 +1,45 @@
----
+﻿---
 name: security-review
-description: Revisa código, endpoints, Supabase, uploads, webhooks e agentes para identificar exposição de secrets, falhas de autorização e riscos de dados.
+description: Revisa codigo, endpoints, Supabase, uploads, webhooks e agentes para identificar exposicao de secrets, falhas de autorizacao e riscos de dados.
 ---
 
-# Revisão de segurança
+# Revisao de seguranca
+
+Siga as regras globais do projeto em `AGENTS.md` e `docs/CODING_STANDARDS.md`. Regras de seguranca desta skill podem ser mais restritivas que as regras gerais.
 
 ## Verificar
 
 - secrets no frontend;
 - uso incorreto de `PUBLIC_*`;
 - service role;
-- ausência de RLS;
+- ausencia de RLS;
 - IDOR;
-- validação de sessão;
-- validação de payload;
+- validacao de sessao;
+- validacao de payload;
 - upload inseguro;
 - signed URL longa;
 - path traversal;
-- logs com dados sensíveis;
+- logs com dados sensiveis;
 - webhook exposto;
 - prompt injection;
-- ação destrutiva sem aprovação;
-- SQL dinâmico;
-- dependências desnecessárias;
+- acao destrutiva sem aprovacao;
+- SQL dinamico;
+- dependencias desnecessarias;
 - mensagens de erro excessivas.
 
-## Saída
+## Saida
 
 Classifique:
 
-- crítico;
+- critico;
 - alto;
-- médio;
+- medio;
 - baixo.
 
 Para cada achado:
 
 - arquivo/local;
-- cenário;
+- cenario;
 - impacto;
-- correção mínima;
-- validação.
+- correcao minima;
+- validacao.

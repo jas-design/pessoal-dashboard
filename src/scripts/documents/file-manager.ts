@@ -2,7 +2,7 @@ import {
   createDocumentDownloadUrl,
   getDocuments,
   type DocumentCatalogItem,
-} from "./catalog";
+} from "../../services/documents/catalog";
 
 type SourceTab = "all" | "onedrive" | "uploads";
 type FilterKey = "company" | "department" | "year" | "month" | "type" | "status";
@@ -33,7 +33,9 @@ const monthLabels: Record<string, string> = {
 };
 
 let documents: DocumentCatalogItem[] = [];
-let activeSource: SourceTab = "all";
+const state = {
+  source: "all" as SourceTab,
+};
 
 function getElement<T extends Element>(selector: string) {
   return document.querySelector<T>(selector);
@@ -70,7 +72,7 @@ function getMonth(item: DocumentCatalogItem) {
 }
 
 function getPath(item: DocumentCatalogItem) {
-  return item.storage_path || getMetadataText(item, "path");
+  return item.source_path || item.storage_path || getMetadataText(item, "path");
 }
 
 function isOneDriveDocument(item: DocumentCatalogItem) {
@@ -222,6 +224,7 @@ function createCheckboxCell() {
 
   checkbox.type = "checkbox";
   checkbox.setAttribute("aria-label", "Selecionar documento");
+  checkbox.dataset.documentsRowCheckbox = "true";
   cell.append(checkbox);
 
   return cell;
@@ -239,14 +242,39 @@ function createStatusCell(item: DocumentCatalogItem) {
 }
 
 function showDocumentDetails(item: DocumentCatalogItem) {
-  const details = [
-    `Arquivo: ${item.file_name}`,
-    `Origem: ${getSourceLabel(item)}`,
-    `Tipo: ${getFileType(item)}`,
-    `Status: ${getStatusLabel(item)}`,
-  ];
+  const dialog = getElement<HTMLDialogElement>("[data-documents-details-dialog]");
+  const list = getElement<HTMLElement>("[data-documents-details-list]");
 
-  window.alert(details.join("\n"));
+  if (!dialog || !list) {
+    return;
+  }
+
+  const details = [
+    ["Arquivo", item.file_name],
+    ["Origem", getSourceLabel(item)],
+    ["Tipo", getFileType(item)],
+    ["Status", getStatusLabel(item)],
+    ["Modificado em", formatDate(getModifiedDate(item))],
+    ["Tamanho", formatFileSize(item.file_size)],
+    ["Área/Departamento", getDepartment(item)],
+    ["Caminho", getPath(item)],
+  ].filter(([, value]) => value);
+
+  list.replaceChildren(
+    ...details.map(([label, value]) => {
+      const row = document.createElement("div");
+      const term = document.createElement("dt");
+      const description = document.createElement("dd");
+
+      term.textContent = label;
+      description.textContent = String(value);
+      row.append(term, description);
+
+      return row;
+    })
+  );
+
+  dialog.showModal();
 }
 
 function createActionsCell(item: DocumentCatalogItem) {
@@ -288,7 +316,7 @@ function createActionsCell(item: DocumentCatalogItem) {
   }
 
   if (isOneDriveDocument(item)) {
-    const webUrl = getMetadataText(item, "web_url");
+    const webUrl = item.source_web_url || getMetadataText(item, "web_url");
 
     if (webUrl) {
       const link = document.createElement("a");
@@ -334,11 +362,11 @@ function getFilteredDocuments() {
   const status = getFilterValue("status");
 
   return documents.filter((item) => {
-    if (activeSource === "onedrive" && !isOneDriveDocument(item)) {
+    if (state.source === "onedrive" && !isOneDriveDocument(item)) {
       return false;
     }
 
-    if (activeSource === "uploads" && !isUploadDocument(item)) {
+    if (state.source === "uploads" && !isUploadDocument(item)) {
       return false;
     }
 
@@ -392,8 +420,44 @@ function setVisibility(selector: string, isVisible: boolean) {
   }
 }
 
+function updateEmptyState() {
+  const title = getElement<HTMLElement>("[data-documents-empty-title]");
+  const message = getElement<HTMLElement>("[data-documents-empty-message]");
+  const hasSearch = Boolean(getSearchValue());
+  const hasFilters = ["company", "department", "year", "month", "type", "status"].some(
+    (key) => getFilterValue(key as FilterKey)
+  );
+  const hasOneDriveDocuments = documents.some(isOneDriveDocument);
+
+  if (!title || !message) {
+    return;
+  }
+
+  if (state.source === "onedrive" && !hasOneDriveDocuments) {
+    title.textContent = "Nenhum arquivo do OneDrive sincronizado.";
+    message.textContent = "A integração OneDrive será configurada depois.";
+    return;
+  }
+
+  if (hasSearch) {
+    title.textContent = "Nenhum resultado para a busca.";
+    message.textContent = "Tente buscar por outro nome de arquivo, pasta ou departamento.";
+    return;
+  }
+
+  if (hasFilters) {
+    title.textContent = "Nenhum documento com esses filtros.";
+    message.textContent = "Limpe os filtros para ver a lista completa novamente.";
+    return;
+  }
+
+  title.textContent = "Nenhum documento encontrado";
+  message.textContent = "Os arquivos enviados pelo dashboard ou sincronizados futuramente aparecerão aqui.";
+}
+
 function renderDocuments() {
   const tableBody = getElement<HTMLTableSectionElement>("[data-documents-table-body]");
+  const selectAll = getElement<HTMLInputElement>("[data-documents-select-all]");
   const items = getFilteredDocuments();
 
   if (!tableBody) {
@@ -401,6 +465,10 @@ function renderDocuments() {
   }
 
   tableBody.replaceChildren(...items.map(createDocumentRow));
+  if (selectAll) {
+    selectAll.checked = false;
+  }
+  updateEmptyState();
   setVisibility("[data-documents-empty]", items.length === 0);
   setVisibility("[data-documents-table]", items.length > 0);
 }
@@ -461,21 +529,25 @@ function bindFilters() {
     document.querySelectorAll<HTMLSelectElement>("[data-documents-filter]").forEach((select) => {
       select.value = "";
     });
+    selectSource("all");
     renderDocuments();
+  });
+}
+
+function selectSource(source: SourceTab) {
+  state.source = source;
+
+  document.querySelectorAll<HTMLButtonElement>("[data-source-tab]").forEach((tab) => {
+    const isActive = tab.dataset.sourceTab === source;
+    tab.classList.toggle("is-active", isActive);
+    tab.setAttribute("aria-selected", String(isActive));
   });
 }
 
 function bindSourceTabs() {
   document.querySelectorAll<HTMLButtonElement>("[data-source-tab]").forEach((button) => {
     button.addEventListener("click", () => {
-      activeSource = (button.dataset.sourceTab as SourceTab | undefined) ?? "all";
-
-      document.querySelectorAll<HTMLButtonElement>("[data-source-tab]").forEach((tab) => {
-        const isActive = tab === button;
-        tab.classList.toggle("is-active", isActive);
-        tab.setAttribute("aria-selected", String(isActive));
-      });
-
+      selectSource((button.dataset.sourceTab as SourceTab | undefined) ?? "all");
       renderDocuments();
     });
   });
@@ -486,8 +558,19 @@ function bindFolderTree() {
 
   document.querySelectorAll<HTMLButtonElement>("[data-folder-path]").forEach((button) => {
     button.addEventListener("click", () => {
+      const folderPath = button.dataset.folderPath ?? "Todas as pastas";
+
+      document.querySelectorAll<HTMLButtonElement>("[data-folder-path]").forEach((folder) => {
+        folder.classList.toggle("is-active", folder === button);
+      });
+
       if (breadcrumb) {
-        breadcrumb.textContent = button.dataset.folderPath ?? "Todas as pastas";
+        breadcrumb.textContent = folderPath;
+      }
+
+      if (folderPath === "Uploads") {
+        selectSource("uploads");
+        renderDocuments();
       }
     });
   });
@@ -504,6 +587,24 @@ function bindSyncButton() {
   });
 }
 
+function bindDetailsDialog() {
+  const dialog = getElement<HTMLDialogElement>("[data-documents-details-dialog]");
+
+  getElement<HTMLButtonElement>("[data-documents-details-close]")?.addEventListener("click", () => {
+    dialog?.close();
+  });
+}
+
+function bindSelection() {
+  getElement<HTMLInputElement>("[data-documents-select-all]")?.addEventListener("change", (event) => {
+    const checked = event.currentTarget instanceof HTMLInputElement && event.currentTarget.checked;
+
+    document.querySelectorAll<HTMLInputElement>("[data-documents-row-checkbox]").forEach((checkbox) => {
+      checkbox.checked = checked;
+    });
+  });
+}
+
 export async function loadDocumentsFileManager() {
   const loading = getElement<HTMLElement>("[data-documents-loading]");
   const errorMessage = getElement<HTMLElement>("[data-documents-error]");
@@ -512,6 +613,8 @@ export async function loadDocumentsFileManager() {
   bindSourceTabs();
   bindFolderTree();
   bindSyncButton();
+  bindDetailsDialog();
+  bindSelection();
 
   try {
     documents = await getDocuments();

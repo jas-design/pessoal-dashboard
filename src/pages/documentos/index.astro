@@ -6,7 +6,7 @@ import DocumentsSourceTabs from "../../components/documents/DocumentsSourceTabs.
 import DocumentsTable from "../../components/documents/DocumentsTable.astro";
 import DocumentsToolbar from "../../components/documents/DocumentsToolbar.astro";
 import DashboardLayout from "../../layouts/DashboardLayout.astro";
-import "../../styles/pages/documentos.scss";
+import "../../styles/pages/_documents.scss";
 ---
 
 <DashboardLayout
@@ -28,7 +28,7 @@ import "../../styles/pages/documentos.scss";
 </DashboardLayout>
 
 <script>
-  import { loadDocumentsFileManager } from "../../services/documents/file-manager";
+  import { loadDocumentsFileManager } from "../../scripts/documents/file-manager";
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", loadDocumentsFileManager, { once: true });

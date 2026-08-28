@@ -224,7 +224,8 @@
     }
 
     &:hover,
-    &:focus-visible {
+    &:focus-visible,
+    &.is-active {
       background: rgba(0, 208, 132, 0.1);
       color: #f8fafc;
     }
@@ -369,6 +370,74 @@
   align-items: center;
   gap: 8px;
   white-space: nowrap;
+}
+
+.documents-details-dialog {
+  width: min(520px, calc(100% - 32px));
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at top right, rgba(0, 208, 132, 0.08), rgba(0, 208, 132, 0) 34%),
+    #0b1220;
+  color: #f8fafc;
+  padding: 0;
+  box-shadow: 0 24px 70px rgba(2, 6, 23, 0.52);
+
+  &::backdrop {
+    background: rgba(2, 6, 23, 0.68);
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 20px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+
+    h3 {
+      font-size: 17px;
+      font-weight: 900;
+    }
+
+    button {
+      width: 34px;
+      height: 34px;
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      border-radius: 50%;
+      background: rgba(15, 23, 42, 0.72);
+      color: #cbd5e1;
+      cursor: pointer;
+    }
+  }
+
+  dl {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding: 20px;
+  }
+
+  dl > div {
+    display: grid;
+    gap: 4px;
+  }
+
+  dt {
+    color: #94a3b8;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  dd {
+    margin: 0;
+    color: #f8fafc;
+    font-size: 13px;
+    font-weight: 750;
+    overflow-wrap: anywhere;
+  }
 }
 
 @media (max-width: 1200px) {

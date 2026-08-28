@@ -6,8 +6,10 @@
 
 <div class="empty-state documents-empty" data-documents-empty hidden>
   <div>
-    <h3>Nenhum documento encontrado</h3>
-    <p>Os arquivos enviados pelo dashboard ou sincronizados futuramente aparecerão aqui.</p>
+    <h3 data-documents-empty-title>Nenhum documento encontrado</h3>
+    <p data-documents-empty-message>
+      Os arquivos enviados pelo dashboard ou sincronizados futuramente aparecerão aqui.
+    </p>
   </div>
 </div>
 
@@ -16,7 +18,11 @@
     <thead>
       <tr>
         <th scope="col">
-          <input type="checkbox" aria-label="Selecionar todos os documentos" disabled />
+          <input
+            type="checkbox"
+            aria-label="Selecionar todos os documentos"
+            data-documents-select-all
+          />
         </th>
         <th scope="col">Nome</th>
         <th scope="col">Origem</th>
@@ -31,3 +37,14 @@
     <tbody data-documents-table-body></tbody>
   </table>
 </div>
+
+<dialog class="documents-details-dialog" data-documents-details-dialog>
+  <div class="documents-details-dialog__header">
+    <h3>Detalhes do documento</h3>
+    <button type="button" data-documents-details-close aria-label="Fechar detalhes">
+      ×
+    </button>
+  </div>
+
+  <dl data-documents-details-list></dl>
+</dialog>

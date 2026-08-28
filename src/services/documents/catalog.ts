@@ -12,6 +12,8 @@ export interface DocumentCatalogItem {
   storage_bucket: string | null;
   storage_path: string | null;
   google_web_url: string | null;
+  source_path?: string | null;
+  source_web_url?: string | null;
   source_created_at: string | null;
   source_updated_at: string | null;
   created_at: string;
