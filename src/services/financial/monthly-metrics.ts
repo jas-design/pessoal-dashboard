@@ -8,6 +8,12 @@ export interface MonthlyFinancialMetrics {
   net_profit: number | null;
   net_margin: number | null;
   cash_balance: number | null;
+  cash_inflows: number | null;
+  cash_outflows: number | null;
+  net_revenue: number | null;
+  costs: number | null;
+  operating_expenses: number | null;
+  financial_expenses: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -19,12 +25,27 @@ export interface FinancialPeriod {
 
 type FinancialMonthlyMetricsRow = Omit<
   MonthlyFinancialMetrics,
-  "revenue" | "net_profit" | "net_margin" | "cash_balance"
+  | "revenue"
+  | "net_profit"
+  | "net_margin"
+  | "cash_balance"
+  | "cash_inflows"
+  | "cash_outflows"
+  | "net_revenue"
+  | "costs"
+  | "operating_expenses"
+  | "financial_expenses"
 > & {
   revenue: number | string | null;
   net_profit: number | string | null;
   net_margin: number | string | null;
   cash_balance: number | string | null;
+  cash_inflows: number | string | null;
+  cash_outflows: number | string | null;
+  net_revenue: number | string | null;
+  costs: number | string | null;
+  operating_expenses: number | string | null;
+  financial_expenses: number | string | null;
 };
 
 function assertValidPeriod(year: number, month: number) {
@@ -68,6 +89,14 @@ function toMonthlyFinancialMetrics(
     net_profit: metric.net_profit === null ? null : Number(metric.net_profit),
     net_margin: metric.net_margin === null ? null : Number(metric.net_margin),
     cash_balance: metric.cash_balance === null ? null : Number(metric.cash_balance),
+    cash_inflows: metric.cash_inflows === null ? null : Number(metric.cash_inflows),
+    cash_outflows: metric.cash_outflows === null ? null : Number(metric.cash_outflows),
+    net_revenue: metric.net_revenue === null ? null : Number(metric.net_revenue),
+    costs: metric.costs === null ? null : Number(metric.costs),
+    operating_expenses:
+      metric.operating_expenses === null ? null : Number(metric.operating_expenses),
+    financial_expenses:
+      metric.financial_expenses === null ? null : Number(metric.financial_expenses),
   };
 }
 

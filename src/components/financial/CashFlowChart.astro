@@ -1,0 +1,172 @@
+<section class="cash-flow-section card">
+  <div class="card__header">
+    <div>
+      <h2>Fluxo de caixa</h2>
+      <p>Entradas, saídas e saldo em caixa dos últimos períodos disponíveis.</p>
+    </div>
+  </div>
+
+  <div class="empty-state cash-flow-chart__empty" data-cash-flow-empty>
+    <div>
+      <h3>Sem dados para o fluxo de caixa</h3>
+      <p>Quando houver histórico financeiro, o gráfico aparecerá aqui.</p>
+    </div>
+  </div>
+
+  <div id="cash-flow-chart" class="cash-flow-chart" hidden></div>
+</section>
+
+<script>
+  import ApexCharts from "apexcharts";
+
+  type CashFlowChartData = {
+    labels: string[];
+    inflows: Array<number | null>;
+    outflows: Array<number | null>;
+    balances: Array<number | null>;
+  };
+
+  const chartElement = document.querySelector("#cash-flow-chart");
+  const emptyElement = document.querySelector("[data-cash-flow-empty]");
+  let cashFlowChart: ApexCharts | null = null;
+
+  function isRealNumber(value: number | null | undefined): value is number {
+    return typeof value === "number" && Number.isFinite(value);
+  }
+
+  function formatCurrency(value: number | null | undefined) {
+    if (!isRealNumber(value)) {
+      return "Sem dados";
+    }
+
+    return value.toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+      maximumFractionDigits: 0,
+    });
+  }
+
+  function toggleEmptyState(isEmpty: boolean) {
+    if (chartElement instanceof HTMLElement) {
+      chartElement.hidden = isEmpty;
+    }
+
+    if (emptyElement instanceof HTMLElement) {
+      emptyElement.hidden = !isEmpty;
+    }
+  }
+
+  function hasValidChartData(data: CashFlowChartData) {
+    return [data.inflows, data.outflows, data.balances].some((series) =>
+      series.some(isRealNumber)
+    );
+  }
+
+  async function renderCashFlowChart({
+    labels,
+    inflows,
+    outflows,
+    balances,
+  }: CashFlowChartData) {
+    if (!(chartElement instanceof HTMLElement)) {
+      return;
+    }
+
+    if (!labels.length || !hasValidChartData({ labels, inflows, outflows, balances })) {
+      toggleEmptyState(true);
+      await cashFlowChart?.destroy();
+      cashFlowChart = null;
+      return;
+    }
+
+    toggleEmptyState(false);
+    await cashFlowChart?.destroy();
+
+    cashFlowChart = new ApexCharts(chartElement, {
+      chart: {
+        type: "line",
+        height: 340,
+        toolbar: { show: false },
+        background: "transparent",
+        fontFamily: "inherit",
+      },
+      series: [
+        {
+          name: "Entradas",
+          type: "column",
+          data: inflows,
+        },
+        {
+          name: "Saídas",
+          type: "column",
+          data: outflows,
+        },
+        {
+          name: "Saldo",
+          type: "line",
+          data: balances,
+        },
+      ],
+      colors: ["#22c55e", "#ef4444", "#38bdf8"],
+      dataLabels: {
+        enabled: false,
+      },
+      stroke: {
+        width: [0, 0, 3],
+        curve: "smooth",
+      },
+      plotOptions: {
+        bar: {
+          borderRadius: 7,
+          columnWidth: "44%",
+        },
+      },
+      xaxis: {
+        categories: labels,
+        labels: {
+          style: {
+            colors: "#94a3b8",
+            fontSize: "12px",
+            fontWeight: 700,
+          },
+        },
+        axisBorder: { color: "rgba(148, 163, 184, 0.18)" },
+        axisTicks: { color: "rgba(148, 163, 184, 0.18)" },
+      },
+      yaxis: {
+        labels: {
+          formatter: formatCurrency,
+          style: {
+            colors: "#94a3b8",
+            fontSize: "12px",
+          },
+        },
+      },
+      grid: {
+        borderColor: "rgba(148, 163, 184, 0.16)",
+        strokeDashArray: 4,
+      },
+      legend: {
+        position: "top",
+        horizontalAlign: "right",
+        labels: {
+          colors: "#cbd5e1",
+        },
+      },
+      tooltip: {
+        theme: "dark",
+        y: {
+          formatter: formatCurrency,
+        },
+      },
+    });
+
+    await cashFlowChart.render();
+  }
+
+  window.addEventListener("cash-flow-data", (event) => {
+    if (event instanceof CustomEvent) {
+      renderCashFlowChart(event.detail);
+    }
+  });
+</script>

@@ -1,0 +1,134 @@
+<section class="financial-mini-section" data-financial-indicators aria-live="polite">
+  <div class="financial-mini-section__header">
+    <h2>Indicadores</h2>
+  </div>
+
+  <div class="financial-mini-grid">
+    <article class="financial-mini-card financial-mini-card--blue">
+      <div class="financial-mini-card__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" focusable="false">
+          <path d="M5 19V5" />
+          <path d="M5 19h14" />
+          <path d="M8 15l3-3 3 2 4-6" />
+        </svg>
+      </div>
+
+      <div class="financial-mini-card__body">
+        <span>Liquidez Corrente</span>
+        <strong data-financial-indicator-value="current_ratio">Sem dados</strong>
+        <small data-financial-indicator-status="current_ratio">Sem dados</small>
+      </div>
+    </article>
+
+    <article class="financial-mini-card financial-mini-card--amber">
+      <div class="financial-mini-card__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" focusable="false">
+          <path d="M4 19h16" />
+          <path d="M7 16V9" />
+          <path d="M12 16V5" />
+          <path d="M17 16v-4" />
+        </svg>
+      </div>
+
+      <div class="financial-mini-card__body">
+        <span>Endividamento</span>
+        <strong data-financial-indicator-value="debt_ratio">Sem dados</strong>
+        <small data-financial-indicator-status="debt_ratio">Sem dados</small>
+      </div>
+    </article>
+  </div>
+</section>
+
+<script>
+  type IndicatorKey = "current_ratio" | "debt_ratio";
+  type SummaryData = Record<IndicatorKey, number | null>;
+
+  function isRealNumber(value: number | null | undefined): value is number {
+    return typeof value === "number" && Number.isFinite(value);
+  }
+
+  function formatRatio(value: number | null | undefined) {
+    if (!isRealNumber(value)) {
+      return "Sem dados";
+    }
+
+    return value.toLocaleString("pt-BR", {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 2,
+    });
+  }
+
+  function getStatus(key: IndicatorKey, value: number | null | undefined) {
+    if (!isRealNumber(value)) {
+      return "Sem dados";
+    }
+
+    if (key === "current_ratio") {
+      if (value >= 1.5) {
+        return "Saudável";
+      }
+
+      if (value >= 1) {
+        return "Atenção";
+      }
+
+      return "Crítico";
+    }
+
+    if (value < 40) {
+      return "Controlado";
+    }
+
+    if (value <= 60) {
+      return "Atenção";
+    }
+
+    return "Elevado";
+  }
+
+  function getStatusTone(status: string) {
+    if (status === "Saudável" || status === "Controlado") {
+      return "is-good";
+    }
+
+    if (status === "Atenção") {
+      return "is-warning";
+    }
+
+    if (status === "Crítico" || status === "Elevado") {
+      return "is-danger";
+    }
+
+    return "is-muted";
+  }
+
+  function updateIndicators(data: SummaryData | null) {
+    document.querySelectorAll("[data-financial-indicator-value]").forEach((element) => {
+      if (!(element instanceof HTMLElement)) {
+        return;
+      }
+
+      const key = element.dataset.financialIndicatorValue as IndicatorKey | undefined;
+      element.textContent = key && data ? formatRatio(data[key]) : "Sem dados";
+    });
+
+    document.querySelectorAll("[data-financial-indicator-status]").forEach((element) => {
+      if (!(element instanceof HTMLElement)) {
+        return;
+      }
+
+      const key = element.dataset.financialIndicatorStatus as IndicatorKey | undefined;
+      const status = key && data ? getStatus(key, data[key]) : "Sem dados";
+
+      element.classList.remove("is-good", "is-warning", "is-danger", "is-muted");
+      element.classList.add(getStatusTone(status));
+      element.textContent = status;
+    });
+  }
+
+  window.addEventListener("financial-monthly-summary-data", (event) => {
+    if (event instanceof CustomEvent) {
+      updateIndicators(event.detail);
+    }
+  });
+</script>

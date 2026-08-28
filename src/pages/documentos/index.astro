@@ -1,24 +1,38 @@
 ---
+import DocumentsBreadcrumb from "../../components/documents/DocumentsBreadcrumb.astro";
+import DocumentsFilters from "../../components/documents/DocumentsFilters.astro";
+import DocumentsFolderTree from "../../components/documents/DocumentsFolderTree.astro";
+import DocumentsSourceTabs from "../../components/documents/DocumentsSourceTabs.astro";
+import DocumentsTable from "../../components/documents/DocumentsTable.astro";
+import DocumentsToolbar from "../../components/documents/DocumentsToolbar.astro";
 import DashboardLayout from "../../layouts/DashboardLayout.astro";
-import DocumentsList from "../../components/documents/DocumentsList.astro";
 import "../../styles/pages/documentos.scss";
 ---
 
 <DashboardLayout
   title="Documentos"
-  subtitle="Visualize arquivos privados do Supabase e arquivos sincronizados do Google Drive."
+  subtitle="Gerencie e acesse todos os seus arquivos em um só lugar."
 >
-  <section class="page-card">
-    <div class="page-card__header">
-      <div>
-        <h2>Catálogo de documentos</h2>
+  <DocumentsToolbar />
+  <DocumentsSourceTabs />
+  <DocumentsFilters />
 
-        <p>Arquivos registrados no sistema, independentemente da origem.</p>
-      </div>
+  <section class="documents-manager">
+    <DocumentsFolderTree />
 
-      <a href="/documentos/upload" class="button-primary"> Enviar arquivos </a>
-    </div>
-
-    <DocumentsList />
+    <main class="documents-browser">
+      <DocumentsBreadcrumb />
+      <DocumentsTable />
+    </main>
   </section>
 </DashboardLayout>
+
+<script>
+  import { loadDocumentsFileManager } from "../../services/documents/file-manager";
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", loadDocumentsFileManager, { once: true });
+  } else {
+    loadDocumentsFileManager();
+  }
+</script>

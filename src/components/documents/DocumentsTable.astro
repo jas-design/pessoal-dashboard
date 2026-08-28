@@ -1,0 +1,33 @@
+<div class="documents-browser-state" data-documents-loading>
+  Carregando documentos...
+</div>
+
+<p class="documents-error" data-documents-error hidden></p>
+
+<div class="empty-state documents-empty" data-documents-empty hidden>
+  <div>
+    <h3>Nenhum documento encontrado</h3>
+    <p>Os arquivos enviados pelo dashboard ou sincronizados futuramente aparecerão aqui.</p>
+  </div>
+</div>
+
+<div class="documents-table-wrap" data-documents-table hidden>
+  <table class="documents-file-table">
+    <thead>
+      <tr>
+        <th scope="col">
+          <input type="checkbox" aria-label="Selecionar todos os documentos" disabled />
+        </th>
+        <th scope="col">Nome</th>
+        <th scope="col">Origem</th>
+        <th scope="col">Tipo</th>
+        <th scope="col">Modificado em</th>
+        <th scope="col">Tamanho</th>
+        <th scope="col">Status</th>
+        <th scope="col">Ações</th>
+      </tr>
+    </thead>
+
+    <tbody data-documents-table-body></tbody>
+  </table>
+</div>

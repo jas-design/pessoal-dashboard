@@ -8,6 +8,7 @@ type MetricIcon = "chart" | "currency" | "percent" | "wallet";
 type MetricTone = "positive" | "negative" | "neutral";
 
 interface Props {
+  metricKey?: string;
   title: string;
   value: string;
   icon: MetricIcon;
@@ -21,6 +22,7 @@ interface Props {
 }
 
 const {
+  metricKey,
   title,
   value,
   icon,
@@ -45,6 +47,7 @@ const sparklineAreaPath = `${sparklinePath} L 240 72 L 0 72 Z`;
 
 <article
   class="metric-card metric-card--showcase"
+  data-financial-metric-card={metricKey}
   style={`--metric-accent: ${accent}; --metric-accent-soft: ${accentSoft}; --metric-accent-glow: ${accentGlow};`}
 >
   <div class="metric-card__top">
@@ -54,7 +57,7 @@ const sparklineAreaPath = `${sparklinePath} L 240 72 L 0 72 Z`;
 
     <div class="metric-card__copy">
       <span>{title}</span>
-      <strong>{value}</strong>
+      <strong data-financial-metric-value>{value}</strong>
     </div>
   </div>
 
@@ -66,9 +69,16 @@ const sparklineAreaPath = `${sparklinePath} L 240 72 L 0 72 Z`;
           tone === "positive" && "is-positive",
           tone === "negative" && "is-negative",
         ]}
+        data-financial-metric-variation
       >
         {variation}
       </p>
+    )
+  }
+
+  {
+    !variation && (
+      <p class="metric-card__variation" data-financial-metric-variation hidden></p>
     )
   }
 
@@ -81,8 +91,16 @@ const sparklineAreaPath = `${sparklinePath} L 240 72 L 0 72 Z`;
         </linearGradient>
       </defs>
 
-      <path d={sparklineAreaPath} fill={`url(#financial-metric-area-${index})`}></path>
-      <path d={sparklinePath} class="metric-card__sparkline-line"></path>
+        <path
+          d={sparklineAreaPath}
+          data-financial-metric-sparkline-area
+          fill={`url(#financial-metric-area-${index})`}
+        ></path>
+        <path
+          d={sparklinePath}
+          class="metric-card__sparkline-line"
+          data-financial-metric-sparkline-line
+        ></path>
     </svg>
   </div>
 </article>

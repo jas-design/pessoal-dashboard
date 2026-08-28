@@ -1,0 +1,105 @@
+<section class="financial-mini-section" data-financial-accounts aria-live="polite">
+  <div class="financial-mini-section__header">
+    <h2>Contas</h2>
+  </div>
+
+  <div class="financial-mini-grid">
+    <article class="financial-mini-card financial-mini-card--green">
+      <div class="financial-mini-card__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" focusable="false">
+          <path d="M12 3v18" />
+          <path d="M17 7.5c-.8-1-2.2-1.6-4-1.6-2.3 0-4 1.1-4 2.8 0 4.1 8 1.6 8 5.8 0 1.7-1.7 2.9-4.1 2.9-1.9 0-3.5-.7-4.4-1.8" />
+        </svg>
+      </div>
+
+      <div class="financial-mini-card__body">
+        <span>A Receber</span>
+        <strong data-financial-account-value="accounts_receivable">Sem dados</strong>
+        <small data-financial-account-count="accounts_receivable_open_count">
+          Sem dados em aberto
+        </small>
+      </div>
+
+      <span class="financial-mini-card__arrow" aria-hidden="true">&rarr;</span>
+    </article>
+
+    <article class="financial-mini-card financial-mini-card--red">
+      <div class="financial-mini-card__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" focusable="false">
+          <path d="M12 3v18" />
+          <path d="M17 7.5c-.8-1-2.2-1.6-4-1.6-2.3 0-4 1.1-4 2.8 0 4.1 8 1.6 8 5.8 0 1.7-1.7 2.9-4.1 2.9-1.9 0-3.5-.7-4.4-1.8" />
+        </svg>
+      </div>
+
+      <div class="financial-mini-card__body">
+        <span>A Pagar</span>
+        <strong data-financial-account-value="accounts_payable">Sem dados</strong>
+        <small data-financial-account-count="accounts_payable_open_count">
+          Sem dados em aberto
+        </small>
+      </div>
+
+      <span class="financial-mini-card__arrow" aria-hidden="true">&rarr;</span>
+    </article>
+  </div>
+</section>
+
+<script>
+  type SummaryData = {
+    accounts_receivable: number | null;
+    accounts_receivable_open_count: number | null;
+    accounts_payable: number | null;
+    accounts_payable_open_count: number | null;
+  };
+
+  function isRealNumber(value: number | null | undefined): value is number {
+    return typeof value === "number" && Number.isFinite(value);
+  }
+
+  function formatCurrency(value: number | null | undefined) {
+    if (!isRealNumber(value)) {
+      return "Sem dados";
+    }
+
+    return value.toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+      maximumFractionDigits: 0,
+    });
+  }
+
+  function formatOpenCount(value: number | null | undefined) {
+    if (!isRealNumber(value)) {
+      return "Sem dados em aberto";
+    }
+
+    const label = value === 1 ? "item em aberto" : "itens em aberto";
+    return `${value.toLocaleString("pt-BR")} ${label}`;
+  }
+
+  function updateAccounts(data: SummaryData | null) {
+    document.querySelectorAll("[data-financial-account-value]").forEach((element) => {
+      if (!(element instanceof HTMLElement)) {
+        return;
+      }
+
+      const key = element.dataset.financialAccountValue as keyof SummaryData | undefined;
+      element.textContent = key && data ? formatCurrency(data[key]) : "Sem dados";
+    });
+
+    document.querySelectorAll("[data-financial-account-count]").forEach((element) => {
+      if (!(element instanceof HTMLElement)) {
+        return;
+      }
+
+      const key = element.dataset.financialAccountCount as keyof SummaryData | undefined;
+      element.textContent = key && data ? formatOpenCount(data[key]) : "Sem dados em aberto";
+    });
+  }
+
+  window.addEventListener("financial-monthly-summary-data", (event) => {
+    if (event instanceof CustomEvent) {
+      updateAccounts(event.detail);
+    }
+  });
+</script>

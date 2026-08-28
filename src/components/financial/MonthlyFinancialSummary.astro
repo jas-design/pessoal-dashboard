@@ -1,0 +1,121 @@
+---
+type SummaryValue = number | null;
+
+interface Props {
+  net_revenue?: SummaryValue;
+  costs?: SummaryValue;
+  operating_expenses?: SummaryValue;
+  financial_expenses?: SummaryValue;
+  net_profit?: SummaryValue;
+}
+
+const {
+  net_revenue = null,
+  costs = null,
+  operating_expenses = null,
+  financial_expenses = null,
+  net_profit = null,
+} = Astro.props;
+
+function formatCurrency(value: SummaryValue) {
+  if (value === null || !Number.isFinite(value)) {
+    return "Sem dados";
+  }
+
+  return value.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    maximumFractionDigits: 0,
+  });
+}
+---
+
+<section
+  class="monthly-financial-summary card"
+  data-monthly-financial-summary
+  aria-live="polite"
+>
+  <div class="card__header">
+    <div>
+      <h2>Resumo financeiro do mês</h2>
+      <p>Composição do lucro líquido no período selecionado.</p>
+    </div>
+  </div>
+
+  <div class="monthly-financial-summary__rows">
+    <div class="monthly-financial-summary__row is-positive">
+      <span>Receita Líquida</span>
+      <strong data-summary-value="net_revenue">{formatCurrency(net_revenue)}</strong>
+    </div>
+
+    <div class="monthly-financial-summary__row is-expense">
+      <span>(-) Custos</span>
+      <strong data-summary-value="costs">{formatCurrency(costs)}</strong>
+    </div>
+
+    <div class="monthly-financial-summary__row is-expense">
+      <span>(-) Despesas Operacionais</span>
+      <strong data-summary-value="operating_expenses">
+        {formatCurrency(operating_expenses)}
+      </strong>
+    </div>
+
+    <div class="monthly-financial-summary__row is-expense">
+      <span>(-) Despesas Financeiras</span>
+      <strong data-summary-value="financial_expenses">
+        {formatCurrency(financial_expenses)}
+      </strong>
+    </div>
+
+    <div class="monthly-financial-summary__row is-total">
+      <span>= Lucro Líquido</span>
+      <strong data-summary-value="net_profit">{formatCurrency(net_profit)}</strong>
+    </div>
+  </div>
+</section>
+
+<script>
+  type SummaryValue = number | null;
+  type SummaryData = {
+    net_revenue: SummaryValue;
+    costs: SummaryValue;
+    operating_expenses: SummaryValue;
+    financial_expenses: SummaryValue;
+    net_profit: SummaryValue;
+  };
+
+  function isRealNumber(value: SummaryValue): value is number {
+    return typeof value === "number" && Number.isFinite(value);
+  }
+
+  function formatCurrency(value: SummaryValue) {
+    if (!isRealNumber(value)) {
+      return "Sem dados";
+    }
+
+    return value.toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+      maximumFractionDigits: 0,
+    });
+  }
+
+  function updateSummary(data: SummaryData | null) {
+    const values = document.querySelectorAll("[data-summary-value]");
+
+    values.forEach((element) => {
+      if (!(element instanceof HTMLElement)) {
+        return;
+      }
+
+      const key = element.dataset.summaryValue as keyof SummaryData | undefined;
+      element.textContent = key && data ? formatCurrency(data[key]) : "Sem dados";
+    });
+  }
+
+  window.addEventListener("monthly-financial-summary-data", (event) => {
+    if (event instanceof CustomEvent) {
+      updateSummary(event.detail);
+    }
+  });
+</script>

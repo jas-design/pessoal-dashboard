@@ -1,5 +1,29 @@
 import supabase from '../../lib/supabase/browser';
 
+export interface DocumentCatalogItem {
+  id: string;
+  file_name: string;
+  mime_type: string | null;
+  file_size: number | null;
+  source: 'supabase' | 'google_drive' | 'onedrive' | string;
+  category: string | null;
+  subcategory: string | null;
+  processing_status: string | null;
+  storage_bucket: string | null;
+  storage_path: string | null;
+  google_web_url: string | null;
+  source_created_at: string | null;
+  source_updated_at: string | null;
+  created_at: string;
+  updated_at: string;
+  company_id?: string | null;
+  department?: string | null;
+  period_year?: number | null;
+  period_month?: number | null;
+  provider?: string | null;
+  metadata?: Record<string, unknown> | null;
+}
+
 export interface DocumentFilters {
   source?: 'supabase' | 'google_drive';
   category?: string;
@@ -9,7 +33,7 @@ export interface DocumentFilters {
 
 export async function getDocuments(
   filters: DocumentFilters = {}
-) {
+): Promise<DocumentCatalogItem[]> {
   let query = supabase
     .from('documents')
     .select('*')
@@ -45,7 +69,7 @@ export async function getDocuments(
     );
   }
 
-  return data ?? [];
+  return (data ?? []) as DocumentCatalogItem[];
 }
 
 

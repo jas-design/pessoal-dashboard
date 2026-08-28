@@ -1,0 +1,58 @@
+<section class="documents-filters" aria-label="Filtros de documentos">
+  <label class="documents-search">
+    <span>Buscar</span>
+    <input
+      type="search"
+      placeholder="Buscar por nome de arquivo, pasta, empresa..."
+      data-documents-search
+    />
+  </label>
+
+  <div class="documents-filter-grid">
+    <label>
+      Empresa
+      <select data-documents-filter="company">
+        <option value="">Todas</option>
+      </select>
+    </label>
+
+    <label>
+      Área/Departamento
+      <select data-documents-filter="department">
+        <option value="">Todas</option>
+      </select>
+    </label>
+
+    <label>
+      Ano
+      <select data-documents-filter="year">
+        <option value="">Todos</option>
+      </select>
+    </label>
+
+    <label>
+      Mês
+      <select data-documents-filter="month">
+        <option value="">Todos</option>
+      </select>
+    </label>
+
+    <label>
+      Tipo
+      <select data-documents-filter="type">
+        <option value="">Todos</option>
+      </select>
+    </label>
+
+    <label>
+      Status
+      <select data-documents-filter="status">
+        <option value="">Todos</option>
+      </select>
+    </label>
+
+    <button class="button-small" type="button" data-documents-clear-filters>
+      Limpar filtros
+    </button>
+  </div>
+</section>

@@ -16,17 +16,8 @@
 </div>
 
 <script>
+  import { formatMonthYear } from "../../services/financial/period-format";
   import { getAvailableFinancialPeriods } from "../../services/financial/monthly-metrics";
-
-  function formatPeriodLabel(year, month) {
-    const monthLabel = new Date(year, month - 1, 1).toLocaleDateString("pt-BR", {
-      month: "long",
-    });
-    const capitalizedMonth =
-      monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
-
-    return `${capitalizedMonth}/${year}`;
-  }
 
   function readSelectedPeriod(periods) {
     const params = new URLSearchParams(window.location.search);
@@ -69,7 +60,7 @@
         ...periods.map((period) => {
           const value = `${period.year}-${period.month}`;
           const option = new Option(
-            formatPeriodLabel(period.year, period.month),
+            formatMonthYear(period.year, period.month),
             value
           );
 
