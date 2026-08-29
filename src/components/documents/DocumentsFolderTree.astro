@@ -1,68 +1,106 @@
 ---
-// TEMPORARY MOCK DATA: visual-only folder tree until OneDrive/document_folders exist.
+// Temporary local folder tree until Microsoft Graph synchronization is implemented.
 // Do not insert these folders into Supabase.
 ---
 
 <aside class="documents-folder-panel">
   <div class="documents-panel-header">
     <span>Pastas</span>
-    <small>Visual temporário</small>
+    <small>Visual temporario</small>
   </div>
 
   <nav class="documents-folder-tree" aria-label="Pastas de documentos">
     <ul>
       <li>
-        <button type="button" data-folder-path="Todas as pastas">
+        <button
+          class="is-expanded"
+          type="button"
+          data-folder-toggle
+          data-folder-id="root"
+          data-folder-path="Todas as pastas"
+          data-folder-name="Todas as pastas"
+          aria-expanded="true"
+        >
           <span aria-hidden="true">&rsaquo;</span>
           Todas as pastas
         </button>
 
-        <ul>
+        <ul data-parent-id="root">
           <li>
-            <button type="button" data-folder-path="OneDrive">
+            <button
+              type="button"
+              data-folder-toggle
+              data-folder-id="onedrive"
+              data-folder-path="OneDrive"
+              data-folder-name="OneDrive"
+              aria-expanded="false"
+            >
               <span aria-hidden="true">&rsaquo;</span>
               OneDrive
             </button>
 
-            <ul>
+            <ul data-parent-id="onedrive" hidden>
               <li>
-                <button type="button" data-folder-path="OneDrive > Empresa A">
+                <button
+                  type="button"
+                  data-folder-toggle
+                  data-folder-id="empresa-a"
+                  data-folder-path="OneDrive|Empresa A"
+                  data-folder-name="Empresa A"
+                  aria-expanded="false"
+                >
                   <span aria-hidden="true">&rsaquo;</span>
                   Empresa A
                 </button>
 
-                <ul>
+                <ul data-parent-id="empresa-a" hidden>
                   <li>
-                    <button type="button" data-folder-path="OneDrive > Empresa A > Empresa">
+                    <button
+                      type="button"
+                      data-folder-toggle
+                      data-folder-id="empresa-a-empresa"
+                      data-folder-path="OneDrive|Empresa A|Empresa"
+                      data-folder-name="Empresa"
+                      aria-expanded="false"
+                    >
                       <span aria-hidden="true">&rsaquo;</span>
                       Empresa
                     </button>
 
-                    <ul>
+                    <ul data-parent-id="empresa-a-empresa" hidden>
                       <li>
                         <button
                           type="button"
-                          data-folder-path="OneDrive > Empresa A > Empresa > Financeiro"
+                          data-folder-toggle
+                          data-folder-id="empresa-a-financeiro"
+                          data-folder-path="OneDrive|Empresa A|Empresa|Financeiro"
+                          data-folder-name="Financeiro"
+                          aria-expanded="false"
                         >
                           <span aria-hidden="true">&rsaquo;</span>
                           Financeiro
                         </button>
 
-                        <ul>
+                        <ul data-parent-id="empresa-a-financeiro" hidden>
                           <li>
                             <button
                               type="button"
-                              data-folder-path="OneDrive > Empresa A > Empresa > Financeiro > 2026"
+                              data-folder-toggle
+                              data-folder-id="empresa-a-financeiro-2026"
+                              data-folder-path="OneDrive|Empresa A|Empresa|Financeiro|2026"
+                              data-folder-name="2026"
+                              aria-expanded="false"
                             >
                               <span aria-hidden="true">&rsaquo;</span>
                               2026
                             </button>
 
-                            <ul>
+                            <ul data-parent-id="empresa-a-financeiro-2026" hidden>
                               <li>
                                 <button
                                   type="button"
-                                  data-folder-path="OneDrive > Empresa A > Empresa > Financeiro > 2026 > Agosto"
+                                  data-folder-path="OneDrive|Empresa A|Empresa|Financeiro|2026|Agosto"
+                                  data-folder-name="Agosto"
                                 >
                                   <span aria-hidden="true">&rsaquo;</span>
                                   Agosto
@@ -72,7 +110,8 @@
                               <li>
                                 <button
                                   type="button"
-                                  data-folder-path="OneDrive > Empresa A > Empresa > Financeiro > 2026 > Julho"
+                                  data-folder-path="OneDrive|Empresa A|Empresa|Financeiro|2026|Julho"
+                                  data-folder-name="Julho"
                                 >
                                   <span aria-hidden="true">&rsaquo;</span>
                                   Julho
@@ -82,7 +121,8 @@
                               <li>
                                 <button
                                   type="button"
-                                  data-folder-path="OneDrive > Empresa A > Empresa > Financeiro > 2026 > Junho"
+                                  data-folder-path="OneDrive|Empresa A|Empresa|Financeiro|2026|Junho"
+                                  data-folder-name="Junho"
                                 >
                                   <span aria-hidden="true">&rsaquo;</span>
                                   Junho
@@ -94,7 +134,8 @@
                           <li>
                             <button
                               type="button"
-                              data-folder-path="OneDrive > Empresa A > Empresa > Financeiro > 2025"
+                              data-folder-path="OneDrive|Empresa A|Empresa|Financeiro|2025"
+                              data-folder-name="2025"
                             >
                               <span aria-hidden="true">&rsaquo;</span>
                               2025
@@ -106,7 +147,8 @@
                       <li>
                         <button
                           type="button"
-                          data-folder-path="OneDrive > Empresa A > Empresa > Administrativo"
+                          data-folder-path="OneDrive|Empresa A|Empresa|Administrativo"
+                          data-folder-name="Administrativo"
                         >
                           <span aria-hidden="true">&rsaquo;</span>
                           Administrativo
@@ -116,7 +158,11 @@
                   </li>
 
                   <li>
-                    <button type="button" data-folder-path="OneDrive > Empresa A > Pessoal">
+                    <button
+                      type="button"
+                      data-folder-path="OneDrive|Empresa A|Pessoal"
+                      data-folder-name="Pessoal"
+                    >
                       <span aria-hidden="true">&rsaquo;</span>
                       Pessoal
                     </button>
@@ -125,7 +171,11 @@
               </li>
 
               <li>
-                <button type="button" data-folder-path="OneDrive > Empresa B">
+                <button
+                  type="button"
+                  data-folder-path="OneDrive|Empresa B"
+                  data-folder-name="Empresa B"
+                >
                   <span aria-hidden="true">&rsaquo;</span>
                   Empresa B
                 </button>
@@ -134,7 +184,7 @@
           </li>
 
           <li>
-            <button type="button" data-folder-path="Uploads">
+            <button type="button" data-folder-path="Uploads" data-folder-name="Uploads">
               <span aria-hidden="true">&rsaquo;</span>
               Uploads
             </button>

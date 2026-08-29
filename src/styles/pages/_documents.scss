@@ -221,6 +221,7 @@
     span {
       color: var(--green);
       font-size: 10px;
+      transition: transform 0.18s ease;
     }
 
     &:hover,
@@ -228,6 +229,10 @@
     &.is-active {
       background: rgba(0, 208, 132, 0.1);
       color: #f8fafc;
+    }
+
+    &.is-expanded span {
+      transform: rotate(90deg);
     }
   }
 }

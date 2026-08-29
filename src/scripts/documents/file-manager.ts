@@ -7,6 +7,11 @@ import {
 type SourceTab = "all" | "onedrive" | "uploads";
 type FilterKey = "company" | "department" | "year" | "month" | "type" | "status";
 
+interface FilterOption {
+  value: string;
+  label: string;
+}
+
 const statusLabels: Record<string, string> = {
   pending: "Pendente",
   processing: "Processando",
@@ -18,36 +23,36 @@ const statusLabels: Record<string, string> = {
 };
 
 const monthLabels: Record<string, string> = {
-  "1": "Janeiro",
-  "2": "Fevereiro",
-  "3": "Março",
-  "4": "Abril",
-  "5": "Maio",
-  "6": "Junho",
-  "7": "Julho",
-  "8": "Agosto",
-  "9": "Setembro",
-  "10": "Outubro",
-  "11": "Novembro",
-  "12": "Dezembro",
+  "1": "Jan",
+  "2": "Fev",
+  "3": "Mar",
+  "4": "Abr",
+  "5": "Mai",
+  "6": "Jun",
+  "7": "Jul",
+  "8": "Ago",
+  "9": "Set",
+  "10": "Out",
+  "11": "Nov",
+  "12": "Dez",
 };
 
 let documents: DocumentCatalogItem[] = [];
+// Temporary local folder tree until Microsoft Graph synchronization is implemented.
+const expandedFolders = new Set(["root"]);
 const state = {
   source: "all" as SourceTab,
+  search: "",
+  company: "",
+  department: "",
+  year: "",
+  month: "",
+  type: "",
+  status: "",
 };
 
 function getElement<T extends Element>(selector: string) {
   return document.querySelector<T>(selector);
-}
-
-function getFilterValue(key: FilterKey) {
-  const element = getElement<HTMLSelectElement>(`[data-documents-filter="${key}"]`);
-  return element?.value ?? "";
-}
-
-function getSearchValue() {
-  return getElement<HTMLInputElement>("[data-documents-search]")?.value.trim().toLowerCase() ?? "";
 }
 
 function getMetadataText(item: DocumentCatalogItem, key: string) {
@@ -55,8 +60,12 @@ function getMetadataText(item: DocumentCatalogItem, key: string) {
   return typeof value === "string" ? value : "";
 }
 
-function getCompany(item: DocumentCatalogItem) {
-  return item.company_id || getMetadataText(item, "company") || getMetadataText(item, "company_id");
+function getCompanyValue(item: DocumentCatalogItem) {
+  return item.company_id || getMetadataText(item, "company_id") || getMetadataText(item, "company");
+}
+
+function getCompanyLabel(item: DocumentCatalogItem) {
+  return getMetadataText(item, "company_name") || getMetadataText(item, "company") || getCompanyValue(item);
 }
 
 function getDepartment(item: DocumentCatalogItem) {
@@ -83,7 +92,7 @@ function isOneDriveDocument(item: DocumentCatalogItem) {
 }
 
 function isUploadDocument(item: DocumentCatalogItem) {
-  return item.source === "supabase";
+  return item.source.toLowerCase() === "supabase";
 }
 
 function formatFileSize(size: number | null) {
@@ -160,15 +169,16 @@ function getFileType(item: DocumentCatalogItem) {
     return "ZIP";
   }
 
-  if (mimeType.includes("folder")) {
-    return "Pasta";
-  }
-
-  return extension ? extension.toUpperCase() : "Arquivo";
+  return "Outro";
 }
 
 function getStatusLabel(item: DocumentCatalogItem) {
-  const status = item.processing_status ?? "pending";
+  const status = item.processing_status;
+
+  if (!status) {
+    return "Não informado";
+  }
+
   return statusLabels[status] ?? status;
 }
 
@@ -352,64 +362,56 @@ function createDocumentRow(item: DocumentCatalogItem) {
   return row;
 }
 
+function matchesSearch(item: DocumentCatalogItem) {
+  if (!state.search) {
+    return true;
+  }
+
+  const searchableText = [item.file_name, getDepartment(item), getPath(item)]
+    .join(" ")
+    .toLowerCase();
+
+  return searchableText.includes(state.search);
+}
+
+function matchesFilters(item: DocumentCatalogItem) {
+  if (state.source === "onedrive" && !isOneDriveDocument(item)) {
+    return false;
+  }
+
+  if (state.source === "uploads" && !isUploadDocument(item)) {
+    return false;
+  }
+
+  if (state.company && String(getCompanyValue(item)) !== state.company) {
+    return false;
+  }
+
+  if (state.department && String(getDepartment(item)) !== state.department) {
+    return false;
+  }
+
+  if (state.year && String(getYear(item)) !== state.year) {
+    return false;
+  }
+
+  if (state.month && String(getMonth(item)) !== state.month) {
+    return false;
+  }
+
+  if (state.type && getFileType(item) !== state.type) {
+    return false;
+  }
+
+  if (state.status && item.processing_status !== state.status) {
+    return false;
+  }
+
+  return true;
+}
+
 function getFilteredDocuments() {
-  const search = getSearchValue();
-  const company = getFilterValue("company");
-  const department = getFilterValue("department");
-  const year = getFilterValue("year");
-  const month = getFilterValue("month");
-  const type = getFilterValue("type");
-  const status = getFilterValue("status");
-
-  return documents.filter((item) => {
-    if (state.source === "onedrive" && !isOneDriveDocument(item)) {
-      return false;
-    }
-
-    if (state.source === "uploads" && !isUploadDocument(item)) {
-      return false;
-    }
-
-    if (company && String(getCompany(item)) !== company) {
-      return false;
-    }
-
-    if (department && String(getDepartment(item)) !== department) {
-      return false;
-    }
-
-    if (year && String(getYear(item)) !== year) {
-      return false;
-    }
-
-    if (month && String(getMonth(item)) !== month) {
-      return false;
-    }
-
-    if (type && getFileType(item) !== type) {
-      return false;
-    }
-
-    if (status && (item.processing_status ?? "pending") !== status) {
-      return false;
-    }
-
-    if (!search) {
-      return true;
-    }
-
-    const searchableText = [
-      item.file_name,
-      getCompany(item),
-      getDepartment(item),
-      getPath(item),
-      item.mime_type ?? "",
-    ]
-      .join(" ")
-      .toLowerCase();
-
-    return searchableText.includes(search);
-  });
+  return documents.filter((item) => matchesFilters(item) && matchesSearch(item));
 }
 
 function setVisibility(selector: string, isVisible: boolean) {
@@ -423,10 +425,8 @@ function setVisibility(selector: string, isVisible: boolean) {
 function updateEmptyState() {
   const title = getElement<HTMLElement>("[data-documents-empty-title]");
   const message = getElement<HTMLElement>("[data-documents-empty-message]");
-  const hasSearch = Boolean(getSearchValue());
-  const hasFilters = ["company", "department", "year", "month", "type", "status"].some(
-    (key) => getFilterValue(key as FilterKey)
-  );
+  const hasSearch = Boolean(state.search);
+  const hasFilters = ["company", "department", "year", "month", "type", "status"].some((key) => state[key as FilterKey]);
   const hasOneDriveDocuments = documents.some(isOneDriveDocument);
 
   if (!title || !message) {
@@ -440,13 +440,13 @@ function updateEmptyState() {
   }
 
   if (hasSearch) {
-    title.textContent = "Nenhum resultado para a busca.";
+    title.textContent = "Nenhum documento encontrado.";
     message.textContent = "Tente buscar por outro nome de arquivo, pasta ou departamento.";
     return;
   }
 
   if (hasFilters) {
-    title.textContent = "Nenhum documento com esses filtros.";
+    title.textContent = "Nenhum documento encontrado.";
     message.textContent = "Limpe os filtros para ver a lista completa novamente.";
     return;
   }
@@ -455,7 +455,7 @@ function updateEmptyState() {
   message.textContent = "Os arquivos enviados pelo dashboard ou sincronizados futuramente aparecerão aqui.";
 }
 
-function renderDocuments() {
+function applyFilters() {
   const tableBody = getElement<HTMLTableSectionElement>("[data-documents-table-body]");
   const selectAll = getElement<HTMLInputElement>("[data-documents-select-all]");
   const items = getFilteredDocuments();
@@ -484,7 +484,30 @@ function getUniqueOptions(getValue: (item: DocumentCatalogItem) => string | numb
   ).sort((current, next) => current.localeCompare(next, "pt-BR", { numeric: true }));
 }
 
-function fillSelect(key: FilterKey, values: string[], labels: Record<string, string> = {}) {
+function getCompanyOptions() {
+  const options = new Map<string, string>();
+
+  documents.forEach((item) => {
+    const value = getCompanyValue(item);
+
+    if (value) {
+      options.set(String(value), String(getCompanyLabel(item)));
+    }
+  });
+
+  return Array.from(options, ([value, label]) => ({ value, label })).sort((current, next) =>
+    current.label.localeCompare(next.label, "pt-BR", { numeric: true })
+  );
+}
+
+function toOptions(values: string[], labels: Record<string, string> = {}) {
+  return values.map((value) => ({
+    value,
+    label: labels[value] ?? value,
+  }));
+}
+
+function fillSelect(key: FilterKey, options: FilterOption[]) {
   const select = getElement<HTMLSelectElement>(`[data-documents-filter="${key}"]`);
   const firstOption = select?.querySelector("option");
 
@@ -494,29 +517,39 @@ function fillSelect(key: FilterKey, values: string[], labels: Record<string, str
 
   select.replaceChildren(firstOption);
 
-  values.forEach((value) => {
-    select.append(new Option(labels[value] ?? value, value));
+  options.forEach((option) => {
+    select.append(new Option(option.label, option.value));
   });
 }
 
 function fillFilters() {
-  fillSelect("company", getUniqueOptions(getCompany));
-  fillSelect("department", getUniqueOptions(getDepartment));
-  fillSelect("year", getUniqueOptions(getYear).sort((current, next) => Number(next) - Number(current)));
-  fillSelect("month", getUniqueOptions(getMonth), monthLabels);
-  fillSelect("type", getUniqueOptions(getFileType));
+  fillSelect("company", getCompanyOptions());
+  fillSelect("department", toOptions(getUniqueOptions(getDepartment)));
+  fillSelect("year", toOptions(getUniqueOptions(getYear).sort((current, next) => Number(next) - Number(current))));
+  fillSelect("month", toOptions(getUniqueOptions(getMonth), monthLabels));
+  fillSelect("type", toOptions(getUniqueOptions(getFileType)));
   fillSelect(
     "status",
-    getUniqueOptions((item) => item.processing_status ?? "pending"),
-    statusLabels
+    toOptions(getUniqueOptions((item) => item.processing_status), statusLabels)
   );
 }
 
 function bindFilters() {
-  getElement<HTMLInputElement>("[data-documents-search]")?.addEventListener("input", renderDocuments);
+  getElement<HTMLInputElement>("[data-documents-search]")?.addEventListener("input", (event) => {
+    state.search = event.currentTarget instanceof HTMLInputElement ? event.currentTarget.value.trim().toLowerCase() : "";
+    applyFilters();
+  });
 
   document.querySelectorAll<HTMLSelectElement>("[data-documents-filter]").forEach((select) => {
-    select.addEventListener("change", renderDocuments);
+    select.addEventListener("change", () => {
+      const key = select.dataset.documentsFilter as FilterKey | undefined;
+
+      if (key) {
+        state[key] = select.value;
+      }
+
+      applyFilters();
+    });
   });
 
   getElement<HTMLButtonElement>("[data-documents-clear-filters]")?.addEventListener("click", () => {
@@ -529,8 +562,15 @@ function bindFilters() {
     document.querySelectorAll<HTMLSelectElement>("[data-documents-filter]").forEach((select) => {
       select.value = "";
     });
+    state.search = "";
+    state.company = "";
+    state.department = "";
+    state.year = "";
+    state.month = "";
+    state.type = "";
+    state.status = "";
     selectSource("all");
-    renderDocuments();
+    applyFilters();
   });
 }
 
@@ -548,9 +588,38 @@ function bindSourceTabs() {
   document.querySelectorAll<HTMLButtonElement>("[data-source-tab]").forEach((button) => {
     button.addEventListener("click", () => {
       selectSource((button.dataset.sourceTab as SourceTab | undefined) ?? "all");
-      renderDocuments();
+      applyFilters();
     });
   });
+}
+
+function toggleFolder(folderId: string) {
+  const button = getElement<HTMLButtonElement>(`[data-folder-id="${folderId}"]`);
+  const childList = getElement<HTMLUListElement>(`[data-parent-id="${folderId}"]`);
+
+  if (!button || !childList) {
+    return;
+  }
+
+  if (expandedFolders.has(folderId)) {
+    expandedFolders.delete(folderId);
+  } else {
+    expandedFolders.add(folderId);
+  }
+
+  const isExpanded = expandedFolders.has(folderId);
+
+  childList.hidden = !isExpanded;
+  button.classList.toggle("is-expanded", isExpanded);
+  button.setAttribute("aria-expanded", String(isExpanded));
+}
+
+function formatFolderBreadcrumb(folderPath: string) {
+  return folderPath
+    .split("|")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(" > ");
 }
 
 function bindFolderTree() {
@@ -559,18 +628,18 @@ function bindFolderTree() {
   document.querySelectorAll<HTMLButtonElement>("[data-folder-path]").forEach((button) => {
     button.addEventListener("click", () => {
       const folderPath = button.dataset.folderPath ?? "Todas as pastas";
+      const folderId = button.dataset.folderId;
 
       document.querySelectorAll<HTMLButtonElement>("[data-folder-path]").forEach((folder) => {
         folder.classList.toggle("is-active", folder === button);
       });
 
-      if (breadcrumb) {
-        breadcrumb.textContent = folderPath;
+      if (button.hasAttribute("data-folder-toggle") && folderId) {
+        toggleFolder(folderId);
       }
 
-      if (folderPath === "Uploads") {
-        selectSource("uploads");
-        renderDocuments();
+      if (breadcrumb) {
+        breadcrumb.textContent = formatFolderBreadcrumb(folderPath);
       }
     });
   });
@@ -619,7 +688,7 @@ export async function loadDocumentsFileManager() {
   try {
     documents = await getDocuments();
     fillFilters();
-    renderDocuments();
+    applyFilters();
   } catch (error) {
     console.error(error);
 
