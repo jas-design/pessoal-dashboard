@@ -1,0 +1,53 @@
+html[data-theme="dark"] {
+  color-scheme: dark;
+
+  --app-background: #13121a;
+  --surface-card: #201f27;
+  --surface-secondary: #1c1b23;
+  --surface-elevated: #2a2932;
+  --surface-muted: #35343d;
+
+  --text-primary: #e5e1ec;
+  --text-secondary: #c8c4d6;
+  --text-muted: #928fa0;
+  --text-inverse: #13121a;
+
+  --border-default: #474554;
+  --border-subtle: rgba(146, 143, 160, 0.22);
+
+  --color-primary: #c5c0ff;
+  --color-primary-hover: #ddd9ff;
+  --color-primary-soft: rgba(197, 192, 255, 0.14);
+  --color-secondary: #c3c7cc;
+  --color-success: #67dc8a;
+  --color-warning: #ffb876;
+  --color-danger: #ffb4ab;
+  --color-info: #8fcfff;
+
+  --sidebar-background: #1c1b23;
+  --sidebar-surface: #2a2932;
+  --sidebar-text: rgba(229, 225, 236, 0.9);
+  --sidebar-text-muted: rgba(229, 225, 236, 0.58);
+  --sidebar-active: #8a80ff;
+  --sidebar-hover: #2a2932;
+
+  --input-background: #1c1b23;
+  --input-border: #474554;
+  --input-focus: #c5c0ff;
+
+  --chart-primary: #c5c0ff;
+  --chart-secondary: #72d7d7;
+  --chart-success: #67dc8a;
+  --chart-warning: #ffb876;
+  --chart-danger: #ffb4ab;
+  --chart-info: #8fcfff;
+  --chart-positive: var(--chart-success);
+  --chart-negative: var(--chart-danger);
+  --chart-neutral: #928fa0;
+
+  --shadow-card: none;
+  --shadow-elevated: 0 22px 55px rgba(0, 0, 0, 0.28);
+
+  --font-primary: "Public Sans", sans-serif;
+  --font-functional: "Public Sans", sans-serif;
+}

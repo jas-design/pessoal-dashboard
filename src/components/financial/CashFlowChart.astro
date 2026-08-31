@@ -30,6 +30,10 @@
   const emptyElement = document.querySelector("[data-cash-flow-empty]");
   let cashFlowChart: ApexCharts | null = null;
 
+  function getCssVar(name: string) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+
   function isRealNumber(value: number | null | undefined): value is number {
     return typeof value === "number" && Number.isFinite(value);
   }
@@ -107,7 +111,7 @@
           data: balances,
         },
       ],
-      colors: ["#22c55e", "#ef4444", "#38bdf8"],
+      colors: [getCssVar("--chart-green"), getCssVar("--chart-red"), getCssVar("--chart-blue")],
       dataLabels: {
         enabled: false,
       },
@@ -125,32 +129,32 @@
         categories: labels,
         labels: {
           style: {
-            colors: "#94a3b8",
+            colors: getCssVar("--color-text-muted"),
             fontSize: "12px",
             fontWeight: 700,
           },
         },
-        axisBorder: { color: "rgba(148, 163, 184, 0.18)" },
-        axisTicks: { color: "rgba(148, 163, 184, 0.18)" },
+        axisBorder: { color: getCssVar("--color-border-light") },
+        axisTicks: { color: getCssVar("--color-border-light") },
       },
       yaxis: {
         labels: {
           formatter: formatCurrency,
           style: {
-            colors: "#94a3b8",
+            colors: getCssVar("--color-text-muted"),
             fontSize: "12px",
           },
         },
       },
       grid: {
-        borderColor: "rgba(148, 163, 184, 0.16)",
+        borderColor: getCssVar("--color-border-light"),
         strokeDashArray: 4,
       },
       legend: {
         position: "top",
         horizontalAlign: "right",
         labels: {
-          colors: "#cbd5e1",
+          colors: getCssVar("--color-text-secondary"),
         },
       },
       tooltip: {

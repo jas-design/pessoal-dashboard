@@ -1,0 +1,46 @@
+---
+const summaryCards = [
+  {
+    label: "A Receber",
+    value: "R$ 0,00",
+    note: "Nenhum dado conectado",
+    accent: "green",
+  },
+  {
+    label: "A Pagar",
+    value: "R$ 0,00",
+    note: "Nenhum dado conectado",
+    accent: "red",
+  },
+  {
+    label: "Recebido no periodo",
+    value: "R$ 0,00",
+    note: "Nenhum dado conectado",
+    accent: "blue",
+  },
+  {
+    label: "Pago no periodo",
+    value: "R$ 0,00",
+    note: "Nenhum dado conectado",
+    accent: "orange",
+  },
+];
+---
+
+<section class="financial-page-summary" aria-label="Resumo financeiro">
+  {
+    summaryCards.map((card) => (
+      <article class:list={["financial-page-summary-card", `is-${card.accent}`]}>
+        <div class="financial-page-summary-card__icon" aria-hidden="true">
+          $
+        </div>
+
+        <div>
+          <span>{card.label}</span>
+          <strong>{card.value}</strong>
+          <small>{card.note}</small>
+        </div>
+      </article>
+    ))
+  }
+</section>

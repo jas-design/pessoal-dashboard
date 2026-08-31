@@ -6,7 +6,7 @@
 
 .dashboard-main {
   min-width: 0;
-  background: var(--bg);
+  background: var(--color-page-bg);
 }
 
 .dashboard-content {
@@ -17,8 +17,8 @@
   position: sticky;
   top: 0;
   height: 100vh;
-  background: var(--sidebar);
-  border-right: 1px solid var(--border);
+  background: var(--sidebar-background);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -26,7 +26,7 @@
   &__brand {
     height: var(--header-height);
     padding: 18px 20px;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     display: flex;
     align-items: center;
     gap: 12px;
@@ -35,6 +35,7 @@
       display: block;
       font-size: 16px;
       font-weight: 800;
+      color: var(--sidebar-text);
     }
 
     span {
@@ -42,7 +43,7 @@
       margin-top: 4px;
       font-size: 11px;
       letter-spacing: 0.14em;
-      color: var(--muted);
+      color: var(--sidebar-text-muted);
     }
   }
 
@@ -50,8 +51,8 @@
     width: 38px;
     height: 38px;
     border-radius: 13px;
-    background: var(--green);
-    color: #06120d;
+    background: var(--sidebar-active);
+    color: var(--color-text-inverse);
     display: grid;
     place-items: center;
     font-weight: 900;
@@ -70,25 +71,25 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    color: #b6c5d8;
+    color: var(--sidebar-text);
     font-weight: 600;
     transition: var(--transition);
 
     &:hover {
-      background: rgba(255, 255, 255, 0.04);
-      color: var(--text);
+      background: var(--sidebar-hover);
+      color: var(--sidebar-text);
     }
 
     &.is-active {
-      background: var(--green-soft);
-      color: var(--green);
-      border-left: 2px solid var(--green);
+      background: var(--sidebar-surface);
+      color: var(--sidebar-text);
+      border-left: 2px solid var(--sidebar-active);
     }
   }
 
   &__icon {
     width: 22px;
-    color: var(--muted);
+    color: var(--sidebar-text-muted);
   }
 
   &__badge {
@@ -96,8 +97,8 @@
     min-width: 26px;
     height: 24px;
     border-radius: 999px;
-    background: var(--panel-3);
-    color: #cbd5e1;
+    background: var(--sidebar-surface);
+    color: var(--sidebar-text);
     display: grid;
     place-items: center;
     font-size: 12px;
@@ -107,7 +108,7 @@
   &__footer {
     margin-top: auto;
     padding: 18px 14px;
-    border-top: 1px solid var(--border);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
   }
 
   &__status {
@@ -118,13 +119,13 @@
   &__usage {
     display: flex;
     justify-content: space-between;
-    color: #cbd5e1;
+    color: var(--sidebar-text-muted);
     font-size: 12px;
   }
 
   &__status-header strong {
-    background: var(--green-soft);
-    color: var(--green);
+    background: var(--sidebar-surface);
+    color: var(--sidebar-text);
     padding: 6px 10px;
     border-radius: 999px;
     font-size: 11px;
@@ -136,7 +137,7 @@
 
   &__progress {
     height: 4px;
-    background: var(--panel-3);
+    background: var(--sidebar-surface);
     border-radius: 999px;
     overflow: hidden;
 
@@ -149,8 +150,8 @@
 
   &__user {
     padding: 12px;
-    background: var(--panel);
-    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: var(--radius-md);
     display: flex;
     align-items: center;
@@ -159,11 +160,12 @@
     strong {
       display: block;
       font-size: 14px;
+      color: var(--sidebar-text);
     }
 
     span {
       display: block;
-      color: var(--muted);
+      color: var(--sidebar-text-muted);
       font-size: 12px;
       margin-top: 2px;
     }
@@ -173,7 +175,8 @@
     width: 38px;
     height: 38px;
     border-radius: 12px;
-    background: linear-gradient(135deg, var(--blue), var(--purple));
+    background: linear-gradient(135deg, var(--chart-blue), var(--chart-teal));
+    color: var(--color-text-inverse);
     display: grid;
     place-items: center;
     font-size: 13px;

@@ -1,0 +1,25 @@
+:root {
+  --font-primary: "Plus Jakarta Sans", Inter, "Segoe UI", sans-serif;
+  --font-functional: Inter, "Segoe UI", sans-serif;
+  --font-family-base: var(--font-primary);
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-black: 800;
+  --font-page-title: 1.75rem;
+  --font-section-title: 1.125rem;
+  --font-card-title: 0.875rem;
+  --font-body: 0.875rem;
+  --font-small: 0.75rem;
+  --font-stat: 1.5rem;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-md: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.5rem;
+  --font-size-2xl: 1.75rem;
+  --line-height-tight: 1.15;
+  --line-height-base: 1.5;
+  --line-height-relaxed: 1.65;
+}

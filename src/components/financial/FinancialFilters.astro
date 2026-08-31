@@ -1,0 +1,44 @@
+<section class="financial-page-filters" aria-label="Filtros financeiros">
+  <label class="financial-page-search">
+    <span>Buscar</span>
+    <input
+      type="search"
+      placeholder="Buscar por descricao, empresa ou documento..."
+      data-financial-search
+    />
+  </label>
+
+  <div class="financial-page-filter-grid">
+    <label>
+      Empresa
+      <select data-financial-filter="company">
+        <option value="">Todas</option>
+      </select>
+    </label>
+
+    <label>
+      Ano
+      <select data-financial-filter="year">
+        <option value="">Todos</option>
+      </select>
+    </label>
+
+    <label>
+      Mes
+      <select data-financial-filter="month">
+        <option value="">Todos</option>
+      </select>
+    </label>
+
+    <label>
+      Status
+      <select data-financial-filter="status">
+        <option value="">Todos</option>
+      </select>
+    </label>
+
+    <button class="button-small" type="button" data-financial-clear-filters>
+      Limpar filtros
+    </button>
+  </div>
+</section>

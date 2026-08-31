@@ -1,0 +1,40 @@
+---
+import FinancialFilters from "../../components/financial/FinancialFilters.astro";
+import FinancialSummaryCards from "../../components/financial/FinancialSummaryCards.astro";
+import FinancialTable from "../../components/financial/FinancialTable.astro";
+import DashboardLayout from "../../layouts/DashboardLayout.astro";
+import "../../styles/pages/financial.scss";
+---
+
+<DashboardLayout
+  title="Financeiro"
+  subtitle="Controle de contas, movimentacoes e situacao financeira."
+>
+  <FinancialSummaryCards />
+
+  <nav class="financial-page-tabs" aria-label="Secoes financeiras">
+    <button
+      class="is-active"
+      type="button"
+      data-financial-tab="overview"
+      aria-selected="true"
+    >
+      Visao Geral
+    </button>
+
+    <button type="button" data-financial-tab="receivable" aria-selected="false">
+      A Receber
+    </button>
+
+    <button type="button" data-financial-tab="payable" aria-selected="false">
+      A Pagar
+    </button>
+
+    <button type="button" data-financial-tab="transactions" aria-selected="false">
+      Movimentacoes
+    </button>
+  </nav>
+
+  <FinancialFilters />
+  <FinancialTable />
+</DashboardLayout>

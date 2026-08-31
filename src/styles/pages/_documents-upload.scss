@@ -6,7 +6,7 @@
   label:not(.financial-upload-area) {
     display: grid;
     gap: 8px;
-    color: #cbd5e1;
+    color: var(--color-text-secondary);
     font-size: 14px;
     font-weight: 700;
   }
@@ -64,7 +64,7 @@
     border: 1px solid var(--border);
     border-radius: 10px;
     background: var(--panel-2);
-    color: #cbd5e1;
+    color: var(--color-text-secondary);
     font-size: 13px;
   }
 }

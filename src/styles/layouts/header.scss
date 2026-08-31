@@ -1,7 +1,8 @@
 .header {
   min-height: var(--header-height);
   padding: 14px 32px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-card);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -13,12 +14,13 @@
     h1 {
       font-size: 24px;
       line-height: 1.1;
-      font-weight: 800;
+      font-weight: var(--font-weight-semibold);
+      color: var(--text-primary);
     }
 
     p {
       margin-top: 6px;
-      color: #b9c7da;
+      color: var(--text-secondary);
       font-size: 14px;
     }
   }
@@ -36,8 +38,8 @@
     height: 44px;
     padding: 0 14px;
     border-radius: 12px;
-    background: var(--panel-2);
-    border: 1px solid var(--border);
+    background: var(--surface-secondary);
+    border: 1px solid var(--border-subtle);
     display: flex;
     align-items: center;
     gap: 10px;
@@ -57,8 +59,8 @@
     width: 44px;
     height: 44px;
     border: 1px solid var(--border);
-    background: var(--panel);
-    color: #cbd5e1;
+    background: var(--surface-card);
+    color: var(--text-secondary);
     border-radius: 12px;
     padding: 0;
     display: grid;
@@ -72,9 +74,9 @@
       height: 20px;
       padding: 0 6px;
       background: var(--red);
-      color: white;
+      color: var(--text-inverse);
       border-radius: 999px;
-      border: 2px solid var(--panel);
+      border: 2px solid var(--surface-card);
       display: grid;
       place-items: center;
       font-size: 11px;
@@ -86,7 +88,8 @@
     width: 38px;
     height: 38px;
     border-radius: 12px;
-    background: linear-gradient(135deg, var(--blue), var(--purple));
+    background: linear-gradient(135deg, var(--chart-blue), var(--chart-teal));
+    color: var(--color-text-inverse);
     display: grid;
     place-items: center;
     font-size: 13px;
@@ -96,8 +99,8 @@
   &__logout {
     height: 44px;
     border: 1px solid var(--border);
-    background: var(--panel);
-    color: #cbd5e1;
+    background: var(--surface-card);
+    color: var(--text-secondary);
     border-radius: 12px;
     padding: 0 14px;
     font-weight: 700;
@@ -107,6 +110,43 @@
       color: var(--red);
     }
   }
+
+  &__theme-toggle {
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-control);
+    background: var(--surface-card);
+    color: var(--text-secondary);
+    display: grid;
+    place-items: center;
+    padding: 0;
+
+    &:hover,
+    &:focus-visible {
+      border-color: var(--input-focus);
+      color: var(--color-primary);
+    }
+  }
+
+  &__theme-icon {
+    display: none;
+
+    svg {
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.9;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+  }
+}
+
+[data-theme="light"] .header__theme-icon--moon,
+[data-theme="dark"] .header__theme-icon--sun {
+  display: grid;
 }
 
 .financial-period-select {
@@ -122,7 +162,7 @@
   box-shadow:
     0 10px 24px rgba(2, 6, 23, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  color: #f8fafc;
+  color: var(--color-text-inverse);
   color-scheme: dark;
   display: flex;
   align-items: center;
@@ -132,8 +172,8 @@
     content: "";
     width: 7px;
     height: 7px;
-    border-right: 2px solid #94a3b8;
-    border-bottom: 2px solid #94a3b8;
+    border-right: 2px solid rgba(255, 255, 255, 0.62);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.62);
     pointer-events: none;
     position: absolute;
     right: 15px;
@@ -144,7 +184,7 @@
   &__icon {
     width: 18px;
     height: 18px;
-    color: #dbe7f6;
+    color: rgba(255, 255, 255, 0.82);
     display: grid;
     flex: 0 0 18px;
     place-items: center;
@@ -203,7 +243,7 @@
       min-height: 32px;
       padding: 8px 12px;
       background: #0f172a;
-      color: #f8fafc;
+      color: var(--color-text-inverse);
       font-size: 13px;
       font-weight: 700;
     }

@@ -37,6 +37,10 @@ const totalData = stats.map((item) => item.total_count);
 
   const chartElement = document.querySelector("#automation-chart");
 
+  function getCssVar(name: string) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+
   if (chartElement) {
     const labels = JSON.parse(chartElement.dataset.labels || "[]");
     const success = JSON.parse(chartElement.dataset.success || "[]");
@@ -68,19 +72,19 @@ const totalData = stats.map((item) => item.total_count);
         categories: labels,
         labels: {
           style: {
-            colors: "#94a3b8",
+            colors: getCssVar("--color-text-muted"),
           },
         },
       },
       yaxis: {
         labels: {
           style: {
-            colors: "#94a3b8",
+            colors: getCssVar("--color-text-muted"),
           },
         },
       },
       grid: {
-        borderColor: "#263244",
+        borderColor: getCssVar("--color-border-light"),
         strokeDashArray: 4,
       },
       stroke: {
@@ -92,7 +96,7 @@ const totalData = stats.map((item) => item.total_count);
       },
       legend: {
         labels: {
-          colors: "#cbd5e1",
+          colors: getCssVar("--color-text-secondary"),
         },
       },
     });

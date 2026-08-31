@@ -1,6 +1,7 @@
 ---
 const menuItems = [
   { label: "Dashboard", href: "/dashboard", icon: "grid", badge: null },
+  { label: "Financeiro", href: "/financeiro", icon: "money", badge: null },
   { label: "Documentos", href: "/documentos", icon: "file", badge: null },
   {
     label: "Configuracoes",
@@ -15,6 +16,7 @@ const currentPath = Astro.url.pathname;
 
 const icons = {
   grid: "[ ]",
+  money: "[$]",
   file: "[#]",
   settings: "[=]",
   bell: "[!]",

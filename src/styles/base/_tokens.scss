@@ -1,0 +1,114 @@
+:root {
+  /* Surfaces */
+  --app-background: #fcf8ff;
+  --surface-card: #ffffff;
+  --surface-secondary: #f5f2fe;
+  --surface-elevated: #ffffff;
+  --surface-muted: #efecf8;
+
+  /* Text */
+  --text-primary: #1b1b23;
+  --text-secondary: #464554;
+  --text-muted: #767586;
+  --text-inverse: #ffffff;
+
+  /* Borders */
+  --border-default: #c7c4d7;
+  --border-subtle: #e9e6f3;
+
+  /* Brand and status */
+  --color-primary: #4648d4;
+  --color-primary-hover: #3436b4;
+  --color-primary-soft: #e9e6ff;
+  --color-secondary: #516072;
+  --color-success: #2ca01c;
+  --color-warning: #904900;
+  --color-danger: #ba1a1a;
+  --color-info: #0077c5;
+
+  /* Sidebar */
+  --sidebar-background: #1d2733;
+  --sidebar-surface: #283442;
+  --sidebar-text: rgba(255, 255, 255, 0.88);
+  --sidebar-text-muted: rgba(255, 255, 255, 0.58);
+  --sidebar-active: #4648d4;
+  --sidebar-hover: #2f3b49;
+
+  /* Forms */
+  --input-background: #ffffff;
+  --input-border: #c7c4d7;
+  --input-focus: #4648d4;
+
+  /* Charts */
+  --chart-primary: #4648d4;
+  --chart-secondary: #00a6a6;
+  --chart-success: #2ca01c;
+  --chart-warning: #904900;
+  --chart-danger: #ba1a1a;
+  --chart-info: #0077c5;
+  --chart-positive: var(--chart-success);
+  --chart-negative: var(--chart-danger);
+  --chart-neutral: #767586;
+
+  /* Radius */
+  --radius-control: 10px;
+  --radius-card: 14px;
+  --radius-pill: 999px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* Shadows */
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-elevated: 0 18px 45px rgba(27, 27, 35, 0.14);
+
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-2xl: 32px;
+  --space-3xl: 40px;
+
+  /* App structure */
+  --sidebar-width: 260px;
+  --header-height: 78px;
+  --transition: 0.2s ease;
+
+  /* Legacy aliases kept so existing page styles can migrate safely. */
+  --bg: var(--app-background);
+  --sidebar: var(--sidebar-background);
+  --panel: var(--surface-card);
+  --panel-2: var(--surface-secondary);
+  --panel-3: var(--surface-muted);
+  --border: var(--border-subtle);
+  --text: var(--text-primary);
+  --muted: var(--text-secondary);
+  --muted-2: var(--text-muted);
+  --green: var(--color-success);
+  --green-soft: rgba(44, 160, 28, 0.14);
+  --red: var(--color-danger);
+  --red-soft: rgba(186, 26, 26, 0.12);
+  --blue: var(--color-info);
+  --purple: var(--color-primary);
+  --orange: var(--color-warning);
+
+  --color-page-bg: var(--app-background);
+  --color-surface: var(--surface-card);
+  --color-surface-muted: var(--surface-secondary);
+  --color-sidebar: var(--sidebar-background);
+  --color-sidebar-hover: var(--sidebar-hover);
+  --color-sidebar-active: var(--sidebar-active);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-inverse: var(--text-inverse);
+  --color-border: var(--border-default);
+  --color-border-light: var(--border-subtle);
+  --chart-green: var(--chart-success);
+  --chart-teal: var(--chart-secondary);
+  --chart-blue: var(--chart-info);
+  --chart-orange: var(--chart-warning);
+  --chart-red: var(--chart-danger);
+}
