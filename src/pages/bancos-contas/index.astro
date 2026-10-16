@@ -1,0 +1,124 @@
+---
+import FinancialPeriodSelect from "../../components/financial/FinancialPeriodSelect.astro";
+import DashboardLayout from "../../layouts/DashboardLayout.astro";
+import "../../styles/pages/bank-accounts.scss";
+---
+
+<DashboardLayout
+  title="Bancos e Contas"
+  subtitle="Visao consolidada das contas financeiras."
+>
+  <section class="bank-accounts-page" data-bank-accounts-page>
+    <div class="bank-accounts-page__toolbar" aria-label="Controles de bancos e contas">
+      <FinancialPeriodSelect targetPath="/bancos-contas" shortYear />
+
+      <label class="bank-accounts-company-select">
+        <span>Empresa</span>
+        <select data-bank-accounts-company aria-label="Selecionar empresa" disabled>
+          <option>Empresas nao vinculadas aos dados bancarios</option>
+        </select>
+      </label>
+    </div>
+
+    <section class="bank-accounts-summary" aria-label="Resumo bancario">
+      <article class="bank-accounts-summary-card card">
+        <span>Saldo consolidado</span>
+        <strong data-bank-accounts-value="cash_balance">Carregando...</strong>
+        <p>Baseado no saldo financeiro mensal quando disponivel.</p>
+      </article>
+
+      <article class="bank-accounts-summary-card card">
+        <span>Contas ativas</span>
+        <strong data-bank-accounts-value="active_accounts">Carregando...</strong>
+        <p>Aguardando cadastro/sincronizacao de contas bancarias.</p>
+      </article>
+
+      <article class="bank-accounts-summary-card card">
+        <span>Entradas no periodo</span>
+        <strong data-bank-accounts-value="cash_inflows">Carregando...</strong>
+        <p>Usa movimentacoes reais ou metricas mensais populadas.</p>
+      </article>
+
+      <article class="bank-accounts-summary-card card">
+        <span>Saidas no periodo</span>
+        <strong data-bank-accounts-value="cash_outflows">Carregando...</strong>
+        <p>Usa movimentacoes reais ou metricas mensais populadas.</p>
+      </article>
+    </section>
+
+    <section class="bank-accounts-card card">
+      <div class="card__header">
+        <div>
+          <h2>Contas</h2>
+          <p>Instituicoes e saldos consolidados quando a integracao bancaria existir.</p>
+        </div>
+      </div>
+
+      <div class="bank-accounts-table__scroll" aria-hidden="true">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Instituicao</th>
+              <th scope="col">Nome da conta</th>
+              <th scope="col">Tipo</th>
+              <th scope="col">Empresa</th>
+              <th scope="col">Saldo</th>
+              <th scope="col">Ultima atualizacao</th>
+              <th scope="col">Status</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="empty-state bank-accounts-empty">
+        <div>
+          <h3>Nenhuma conta financeira cadastrada.</h3>
+          <p>Quando a integracao bancaria estiver pronta, as contas aparecerao aqui.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="bank-accounts-card card">
+      <div class="card__header">
+        <div>
+          <h2>Movimentacoes recentes</h2>
+          <p>Ultimos lancamentos financeiros reais do periodo selecionado.</p>
+        </div>
+      </div>
+
+      <div class="bank-accounts-table__scroll">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Data</th>
+              <th scope="col">Descricao</th>
+              <th scope="col">Categoria</th>
+              <th scope="col">Tipo</th>
+              <th scope="col">Valor</th>
+              <th scope="col">Status</th>
+            </tr>
+          </thead>
+          <tbody data-bank-accounts-movements-body></tbody>
+        </table>
+      </div>
+
+      <div class="empty-state bank-accounts-empty" data-bank-accounts-movements-empty hidden>
+        <div>
+          <h3>Nenhuma movimentacao encontrada.</h3>
+          <p>Quando houver lancamentos reais no periodo, eles aparecerao aqui.</p>
+        </div>
+      </div>
+    </section>
+  </section>
+</DashboardLayout>
+
+<script>
+  import { loadBankAccountsPage } from "../../services/financial/bank-accounts-page";
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", loadBankAccountsPage, { once: true });
+  } else {
+    loadBankAccountsPage();
+  }
+</script>

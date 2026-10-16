@@ -1,271 +1,644 @@
-.financial-page-summary {
+.financeiro-page {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 18px;
-  margin-bottom: 24px;
+  gap: var(--space-xl);
 }
 
-.financial-page-summary-card {
-  --financial-card-accent: var(--green);
-  --financial-card-soft: var(--color-primary-soft);
-  min-height: 150px;
-  border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-lg);
-  background:
-    radial-gradient(circle at top right, var(--financial-card-soft), rgba(255, 255, 255, 0) 36%),
-    var(--color-surface);
-  box-shadow: var(--shadow-card);
+.financeiro-page > [data-financeiro-view] {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 16px;
-  padding: 20px;
+  gap: var(--space-xl);
+}
 
-  &.is-red {
-    --financial-card-accent: var(--red);
-    --financial-card-soft: var(--red-soft);
-  }
+.financeiro-page__toolbar {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
 
-  &.is-blue {
-    --financial-card-accent: var(--blue);
-    --financial-card-soft: rgba(0, 119, 197, 0.11);
-  }
-
-  &.is-orange {
-    --financial-card-accent: var(--orange);
-    --financial-card-soft: rgba(255, 159, 28, 0.14);
-  }
-
-  &__icon {
-    width: 46px;
-    height: 46px;
-    border-radius: 50%;
-    background: var(--financial-card-soft);
-    color: var(--financial-card-accent);
-    display: grid;
-    place-items: center;
-    font-size: 20px;
-    font-weight: 900;
-  }
-
-  span,
-  small {
-    display: block;
-  }
+.financeiro-company-select {
+  width: min(300px, 100%);
+  flex: 0 1 300px;
+  display: grid;
+  gap: var(--space-sm);
 
   span {
-    color: var(--color-text-secondary);
-    font-size: 11px;
-    font-weight: 850;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    color: var(--text-muted);
+    font-size: var(--font-small);
+    font-weight: var(--font-weight-semibold);
   }
 
-  strong {
-    display: block;
-    margin-top: 10px;
-    color: var(--color-text-primary);
-    font-size: clamp(1.6rem, 1.15rem + 0.9vw, 2rem);
-    line-height: 1;
-    font-weight: 900;
-    letter-spacing: -0.045em;
+  select {
+    height: 44px;
+  }
+}
+
+// The shared period selector remains compact in the header; this variant exposes
+// its label and uses the page form tokens alongside the company selector.
+.financeiro-page .financial-period-select {
+  width: min(210px, 100%);
+  height: auto;
+  flex: 0 1 210px;
+  display: grid;
+  gap: var(--space-sm);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-primary);
+
+  &::after,
+  .financial-period-select__icon {
+    display: none;
   }
 
-  small {
-    margin-top: 8px;
-    color: var(--color-text-muted);
-    font-size: 12px;
-    font-weight: 750;
+  .financial-period-select__label {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    color: var(--text-secondary);
+    font-size: var(--font-small);
+    font-weight: var(--font-weight-semibold);
   }
+
+  select {
+    height: 44px;
+    min-height: 44px;
+    padding: 0 var(--space-md);
+    border: 1px solid var(--input-border);
+    border-radius: var(--radius-control);
+    background: var(--input-background);
+    color: var(--text-primary);
+    color-scheme: light;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    line-height: normal;
+    appearance: auto;
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.75;
+    }
+  }
+}
+
+.financeiro-page select,
+.financeiro-page .financial-period-select select {
+  background: var(--input-background);
+  border-color: var(--input-border);
+  color: var(--text-primary);
+}
+
+.financeiro-page select option,
+.financeiro-page .financial-period-select select option {
+  background: var(--surface-card);
+  color: var(--text-primary);
+}
+
+html[data-theme="dark"] .financeiro-page select {
+  color-scheme: dark;
+}
+
+html[data-theme="light"] .financeiro-page select {
+  color-scheme: light;
 }
 
 .financial-page-tabs {
+  width: fit-content;
   display: inline-flex;
-  gap: 6px;
-  margin-bottom: 18px;
-  padding: 5px;
-  border: 1px solid var(--color-border-light);
-  border-radius: 999px;
-  background: var(--color-surface);
+  gap: var(--space-xs);
+  padding: var(--space-xs);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
 
-  button {
+  a {
     min-height: 36px;
     border: 0;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     background: transparent;
-    color: var(--color-text-secondary);
-    padding: 0 16px;
-    font-size: 13px;
-    font-weight: 850;
+    color: var(--text-secondary);
+    padding: 0 var(--space-lg);
+    font-size: var(--font-small);
+    font-weight: var(--font-weight-semibold);
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
 
     &.is-active,
     &:hover,
     &:focus-visible {
-      background: var(--green-soft);
-      color: var(--green);
+      background: var(--color-primary-soft);
+      color: var(--color-primary);
     }
   }
 }
 
-.financial-page-filters {
+.receivables-aging-card {
   display: grid;
-  gap: 16px;
-  margin-bottom: 24px;
-  padding: 20px;
-  border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-lg);
-  background:
-    radial-gradient(circle at top right, rgba(44, 160, 28, 0.08), rgba(44, 160, 28, 0) 34%),
-    var(--color-surface);
-  box-shadow: var(--shadow-card);
-}
+  gap: var(--space-lg);
+  padding: var(--space-xl);
 
-.financial-page-search,
-.financial-page-filter-grid label {
-  display: grid;
-  gap: 7px;
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  font-weight: 850;
-}
-
-.financial-page-search input,
-.financial-page-filter-grid select {
-  min-height: 42px;
-  border: 1px solid var(--color-border-light);
-  border-radius: 12px;
-  background: var(--color-surface-muted);
-  color: var(--color-text-primary);
-}
-
-.financial-page-filter-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(120px, 1fr)) auto;
-  gap: 12px;
-  align-items: end;
-
-  .button-small {
-    min-height: 42px;
-    white-space: nowrap;
-  }
-}
-
-.financial-page-table {
-  padding: 24px;
-
-  &__header {
-    margin-bottom: 20px;
-
-    h2 {
-      color: var(--color-text-primary);
-      font-size: 18px;
-      font-weight: 850;
-    }
+  .card__header {
+    margin-bottom: 0;
 
     p {
-      margin-top: 5px;
-      color: var(--color-text-secondary);
-      font-size: 13px;
+      margin-top: var(--space-xs);
+    }
+
+    strong {
+      color: var(--text-primary);
+      font-size: clamp(1.8rem, 1.35rem + 1vw, 2.4rem);
+      line-height: 1;
+      white-space: nowrap;
     }
   }
+}
 
-  &__scroll {
-    max-width: 100%;
-    overflow-x: auto;
+.receivables-aging-card__bar {
+  height: 18px;
+  display: flex;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--surface-secondary);
+
+  span {
+    min-width: 3px;
+  }
+}
+
+.receivables-aging-card__empty,
+.account-summary-card__empty {
+  min-height: 96px;
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--radius-card);
+  background: var(--surface-secondary);
+  color: var(--text-secondary);
+  display: grid;
+  place-items: center;
+  padding: var(--space-xl);
+  text-align: center;
+  font-size: var(--font-body);
+}
+
+.receivables-aging-card__legend {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-md);
+}
+
+.receivables-aging-card__item,
+.account-summary-card__item {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  background: var(--surface-secondary);
+  padding: var(--space-md);
+
+  span,
+  small {
+    display: block;
+    color: var(--text-muted);
+    font-size: var(--font-small);
   }
 
-  table {
-    width: 100%;
-    min-width: 960px;
-    border-collapse: separate;
-    border-spacing: 0 8px;
+  strong {
+    display: block;
+    margin-top: var(--space-sm);
+    color: var(--text-primary);
+    font-size: var(--font-card-title);
+  }
+
+  small {
+    margin-top: var(--space-xs);
+    font-weight: var(--font-weight-semibold);
+  }
+}
+
+.is-positive {
+  color: var(--chart-positive);
+}
+
+.is-negative {
+  color: var(--chart-negative);
+}
+
+.is-warning {
+  color: var(--chart-warning);
+}
+
+.is-info {
+  color: var(--chart-info);
+}
+
+.receivables-aging-card__bar .is-positive,
+.account-summary-card__donut .is-positive {
+  background: var(--chart-positive);
+}
+
+.receivables-aging-card__bar .is-negative,
+.account-summary-card__donut .is-negative {
+  background: var(--chart-negative);
+}
+
+.receivables-aging-card__bar .is-warning,
+.account-summary-card__donut .is-warning {
+  background: var(--chart-warning);
+}
+
+.receivables-aging-card__bar .is-info,
+.account-summary-card__donut .is-info {
+  background: var(--chart-info);
+}
+
+.financeiro-cash-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2.3fr) minmax(280px, 1fr);
+  gap: var(--space-xl);
+  align-items: stretch;
+
+  > .card {
+    height: 100%;
+  }
+}
+
+.cash-flow-section,
+.financeiro-summary-card,
+.account-summary-card,
+.revenue-expense-chart,
+.financeiro-tab-empty,
+.financeiro-operational-card {
+  padding: var(--space-xl);
+}
+
+.cash-flow-section .card__header,
+.financeiro-summary-card .card__header,
+.revenue-expense-chart .card__header {
+  margin-bottom: var(--space-lg);
+
+  p {
+    margin-top: var(--space-xs);
+  }
+}
+
+.financeiro-summary-card__list {
+  display: grid;
+  gap: var(--space-md);
+  margin: 0;
+
+  div {
+    display: grid;
+    gap: var(--space-xs);
+    padding-bottom: var(--space-md);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  div:last-child {
+    padding: var(--space-md);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card);
+    background: var(--surface-secondary);
+  }
+
+  dt {
+    color: var(--text-muted);
+    font-size: var(--font-small);
+  }
+
+  dd {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: clamp(1.35rem, 1rem + 0.8vw, 1.8rem);
+    font-weight: var(--font-weight-bold);
+  }
+
+  .is-positive {
+    color: var(--chart-positive);
+  }
+
+  .is-negative {
+    color: var(--chart-negative);
+  }
+}
+
+.financeiro-accounts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-xl);
+}
+
+.account-summary-card {
+  display: grid;
+  gap: var(--space-xl);
+}
+
+.account-summary-card__header {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-xl);
+  align-items: center;
+
+  h2 {
+    color: var(--text-primary);
+    font-size: var(--font-section-title);
+  }
+
+  strong {
+    display: block;
+    margin-top: var(--space-sm);
+    color: var(--text-primary);
+    font-size: clamp(1.7rem, 1.25rem + 1vw, 2.2rem);
+    line-height: 1;
+  }
+
+  p {
+    margin-top: var(--space-sm);
+    color: var(--text-secondary);
+    font-size: var(--font-body);
+  }
+}
+
+.account-summary-card__donut {
+  width: 104px;
+  height: 104px;
+  position: relative;
+  flex: 0 0 104px;
+  border-radius: 50%;
+  background: var(--surface-secondary);
+
+  span {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: conic-gradient(
+      currentColor var(--offset),
+      currentColor calc(var(--offset) + var(--size)),
+      transparent 0
+    );
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 22px;
+    border-radius: inherit;
+    background: var(--surface-card);
+  }
+
+  &.is-empty {
+    border: 1px dashed var(--border-subtle);
+
+    &::after {
+      display: none;
+    }
+  }
+}
+
+.account-summary-card__breakdown {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-md);
+}
+
+.account-summary-card__link {
+  color: var(--color-primary);
+  font-size: var(--font-body);
+  font-weight: var(--font-weight-semibold);
+}
+
+.revenue-expense-chart {
+  .card__header {
+    align-items: center;
+  }
+}
+
+.revenue-expense-chart__summary {
+  display: flex;
+  gap: var(--space-md);
+  margin: 0;
+  flex-wrap: wrap;
+
+  div {
+    min-width: 120px;
+    padding: var(--space-sm) var(--space-md);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card);
+    background: var(--surface-secondary);
+  }
+
+  dt {
+    color: var(--text-muted);
+    font-size: var(--font-small);
+  }
+
+  dd {
+    margin: var(--space-xs) 0 0;
+    color: var(--text-primary);
+    font-weight: var(--font-weight-bold);
+  }
+
+  .is-positive {
+    color: var(--chart-positive);
+  }
+
+  .is-negative {
+    color: var(--chart-negative);
+  }
+}
+
+.revenue-expense-chart__canvas {
+  min-height: 280px;
+}
+
+.cash-flow-chart {
+  min-height: 280px;
+}
+
+.cash-flow-chart__empty,
+.revenue-expense-chart__empty {
+  min-height: 240px;
+  padding: var(--space-xl);
+}
+
+.financeiro-operational-card {
+  display: grid;
+  gap: var(--space-lg);
+}
+
+.financeiro-operational-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-md);
+
+  div {
+    padding: var(--space-md);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card);
+    background: var(--surface-secondary);
+  }
+
+  span {
+    display: block;
+    color: var(--text-muted);
+    font-size: var(--font-small);
+  }
+
+  strong {
+    display: block;
+    margin-top: var(--space-xs);
+    color: var(--text-primary);
+    font-size: var(--font-card-title);
+  }
+}
+
+.financeiro-table-filters {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) repeat(2, minmax(160px, 220px));
+  gap: var(--space-md);
+  align-items: end;
+
+  label {
+    display: grid;
+    gap: var(--space-sm);
+  }
+
+  span {
+    color: var(--text-muted);
+    font-size: var(--font-small);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  input,
+  select {
+    min-height: 44px;
+    border: 1px solid var(--input-border);
+    border-radius: var(--radius-control);
+    background: var(--input-background);
+    color: var(--text-primary);
+    padding: 0 var(--space-md);
+    font-size: var(--font-size-sm);
+  }
+}
+
+.financial-page-table__scroll {
+  overflow-x: auto;
+}
+
+.financeiro-operational-card table {
+  width: 100%;
+  min-width: 680px;
+  border-collapse: collapse;
+
+  th,
+  td {
+    padding: var(--space-md);
+    border-bottom: 1px solid var(--border-subtle);
+    text-align: left;
+    white-space: nowrap;
   }
 
   th {
-    color: var(--color-text-muted);
-    padding: 0 12px 8px;
-    text-align: left;
-    font-size: 11px;
-    font-weight: 900;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    color: var(--text-muted);
+    font-size: var(--font-small);
+    font-weight: var(--font-weight-semibold);
   }
 
   td {
-    border-top: 1px solid var(--color-border-light);
-    border-bottom: 1px solid var(--color-border-light);
-    background: var(--color-surface);
-    color: var(--color-text-secondary);
-    padding: 12px;
-    font-size: 13px;
-    vertical-align: middle;
+    color: var(--text-secondary);
+    font-size: var(--font-body);
   }
 
-  td:first-child {
-    border-left: 1px solid var(--color-border-light);
-    border-radius: 14px 0 0 14px;
-  }
-
-  td:last-child {
-    border-right: 1px solid var(--color-border-light);
-    border-radius: 0 14px 14px 0;
-  }
-
-  &__empty {
-    min-height: 240px;
-    background: transparent;
+  td:nth-child(2) {
+    white-space: normal;
   }
 }
 
-.financial-status-badge {
-  display: inline-flex;
-  min-height: 26px;
-  align-items: center;
-  border-radius: 999px;
-  padding: 0 10px;
-  font-size: 11px;
-  font-weight: 900;
+.financeiro-table-empty {
+  min-height: 180px;
+  padding: var(--space-xl);
+}
 
-  &.is-paid,
-  &.is-received {
-    background: rgba(34, 197, 94, 0.12);
-    color: var(--color-success);
-  }
+.financeiro-tab-empty {
+  display: grid;
+  gap: var(--space-xs);
 
-  &.is-pending {
-    background: rgba(245, 158, 11, 0.12);
-    color: var(--color-warning);
-  }
-
-  &.is-overdue {
-    background: rgba(248, 113, 113, 0.12);
-    color: var(--color-danger);
+  p {
+    color: var(--text-secondary);
   }
 }
 
 @media (max-width: 1200px) {
-  .financial-page-summary {
+  .receivables-aging-card__legend {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .financial-page-filter-grid {
-    grid-template-columns: repeat(2, minmax(140px, 1fr));
+  .account-summary-card__breakdown {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 980px) {
+  .financeiro-page__toolbar {
+    justify-content: flex-start;
+  }
+
+  .financeiro-cash-grid,
+  .financeiro-accounts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .receivables-aging-card,
+  .cash-flow-section,
+  .financeiro-summary-card,
+  .account-summary-card,
+  .revenue-expense-chart,
+  .financeiro-tab-empty,
+  .financeiro-operational-card {
+    padding: 20px;
+  }
+
+  .financeiro-table-filters,
+  .financeiro-operational-summary {
+    grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 640px) {
-  .financial-page-summary,
-  .financial-page-filter-grid {
-    grid-template-columns: 1fr;
+  .financeiro-page__toolbar,
+  .financeiro-company-select,
+  .financeiro-page .financial-period-select {
+    width: 100%;
   }
 
   .financial-page-tabs {
     width: 100%;
     overflow-x: auto;
+  }
 
-    button {
-      flex: 1 0 auto;
-    }
+  .financial-page-tabs a {
+    flex: 1 0 auto;
+  }
+
+  .receivables-aging-card__legend {
+    grid-template-columns: 1fr;
+  }
+
+  .account-summary-card__header,
+  .revenue-expense-chart .card__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .receivables-aging-card,
+  .cash-flow-section,
+  .financeiro-summary-card,
+  .account-summary-card,
+  .revenue-expense-chart,
+  .financeiro-tab-empty,
+  .financeiro-operational-card {
+    padding: var(--space-lg);
   }
 }

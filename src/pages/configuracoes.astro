@@ -4,43 +4,188 @@ import "../styles/pages/configuracoes.scss";
 ---
 
 <DashboardLayout
-  title="Configurações"
-  subtitle="Ajustes gerais do dashboard e das integrações."
+  title="Configuracoes"
+  subtitle="Ajustes gerais do dashboard e das integracoes."
 >
-  <section class="page-card">
-    <div class="page-card__header">
-      <div>
-        <h2>Preferências do sistema</h2>
-        <p>Configurações básicas do Hub Pessoal.</p>
+  <section class="settings-page" data-settings-page>
+    <nav class="settings-nav" aria-label="Secoes de configuracoes">
+      <a href="#geral">Geral</a>
+      <a href="#empresas">Empresas</a>
+      <a href="#integracoes">Integracoes</a>
+      <a href="#seguranca">Seguranca</a>
+      <a href="#preferencias">Preferencias</a>
+    </nav>
+
+    <section class="settings-section card" id="geral">
+      <div class="card__header">
+        <div>
+          <h2>Geral</h2>
+          <p>Informacoes basicas disponiveis para a conta atual.</p>
+        </div>
       </div>
-    </div>
 
-    <form class="settings-form">
-      <label>
-        Nome do hub
-        <input type="text" value="Hub Pessoal" />
-      </label>
+      <dl class="settings-list">
+        <div>
+          <dt>Nome</dt>
+          <dd data-settings-value="profile_name">Carregando...</dd>
+        </div>
+        <div>
+          <dt>E-mail</dt>
+          <dd data-settings-value="profile_email">Carregando...</dd>
+        </div>
+        <div>
+          <dt>Perfil</dt>
+          <dd data-settings-value="profile_role">Carregando...</dd>
+        </div>
+        <div>
+          <dt>Status</dt>
+          <dd data-settings-value="profile_status">Carregando...</dd>
+        </div>
+      </dl>
 
-      <label>
-        Ambiente
-        <select>
-          <option>Produção</option>
-          <option>Desenvolvimento</option>
-        </select>
-      </label>
+      <div class="settings-note">
+        Para alterar dados da conta, use os controles de perfil da autenticacao.
+      </div>
+    </section>
 
-      <label>
-        Tema padrão
-        <select>
-          <option>Slate Dark</option>
-          <option>Claro</option>
-          <option>Cosmic Dark</option>
-        </select>
-      </label>
+    <section class="settings-section card" id="empresas">
+      <div class="card__header">
+        <div>
+          <h2>Empresas</h2>
+          <p>Empresas cadastradas e visiveis para o usuario atual.</p>
+        </div>
+      </div>
 
-      <button class="button-primary" type="button">
-        Salvar configurações
-      </button>
-    </form>
+      <div class="settings-table__scroll">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Nome</th>
+              <th scope="col">Razao social</th>
+              <th scope="col">Status</th>
+              <th scope="col">Atualizacao</th>
+            </tr>
+          </thead>
+          <tbody data-settings-companies-body></tbody>
+        </table>
+      </div>
+
+      <div class="empty-state settings-empty" data-settings-companies-empty hidden>
+        <div>
+          <h3>Nenhuma empresa encontrada.</h3>
+          <p>Quando houver empresas cadastradas, elas aparecerao aqui.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="settings-section card" id="integracoes">
+      <div class="card__header">
+        <div>
+          <h2>Integracoes</h2>
+          <p>Estado seguro das integracoes relevantes para o projeto.</p>
+        </div>
+      </div>
+
+      <div class="settings-integration-grid">
+        <article class="settings-integration-card">
+          <div>
+            <h3>Supabase</h3>
+            <span data-settings-status="supabase">Carregando...</span>
+          </div>
+          <p data-settings-value="integration_supabase_detail">Carregando...</p>
+        </article>
+
+        <article class="settings-integration-card">
+          <div>
+            <h3>n8n</h3>
+            <span data-settings-status="n8n">Carregando...</span>
+          </div>
+          <p data-settings-value="integration_n8n_detail">Carregando...</p>
+        </article>
+
+        <article class="settings-integration-card">
+          <div>
+            <h3>OneDrive</h3>
+            <span data-settings-status="onedrive">Carregando...</span>
+          </div>
+          <p data-settings-value="integration_onedrive_detail">Carregando...</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="settings-section card" id="seguranca">
+      <div class="card__header">
+        <div>
+          <h2>Seguranca</h2>
+          <p>Informacoes seguras sobre autenticacao e conta.</p>
+        </div>
+      </div>
+
+      <dl class="settings-list">
+        <div>
+          <dt>Autenticacao</dt>
+          <dd data-settings-value="auth_status">Carregando...</dd>
+        </div>
+        <div>
+          <dt>Perfil atualizado em</dt>
+          <dd data-settings-value="profile_updated_at">Carregando...</dd>
+        </div>
+      </dl>
+
+      <div class="settings-note">
+        Tokens, chaves de API, service role e segredos privados nao sao exibidos
+        nesta interface.
+      </div>
+    </section>
+
+    <section class="settings-section card" id="preferencias">
+      <div class="card__header">
+        <div>
+          <h2>Preferencias</h2>
+          <p>Ajustes pessoais para sua experiencia no dashboard.</p>
+        </div>
+      </div>
+
+      <form class="settings-form" data-preference-form>
+        <label>
+          <span>Tema</span>
+          <select data-preference-theme>
+            <option value="system">Sistema</option>
+            <option value="light">Claro</option>
+            <option value="dark">Escuro</option>
+          </select>
+        </label>
+
+        <label data-preference-company-group hidden>
+          <span>Empresa padrao</span>
+          <select data-preference-company>
+            <option value="">Nenhuma empresa padrao</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Periodo financeiro padrao</span>
+          <select data-preference-period>
+            <option value="current_month">Mes atual</option>
+            <option value="latest_with_data">Ultimo periodo com dados</option>
+          </select>
+        </label>
+
+        <div class="settings-form__actions">
+          <button class="button-primary" type="submit">Salvar alteracoes</button>
+          <p data-preference-status>Carregando preferencias...</p>
+        </div>
+      </form>
+    </section>
   </section>
 </DashboardLayout>
+
+<script>
+  import { loadSettingsPage } from "../services/settings/settings-page";
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", loadSettingsPage, { once: true });
+  } else {
+    loadSettingsPage();
+  }
+</script>

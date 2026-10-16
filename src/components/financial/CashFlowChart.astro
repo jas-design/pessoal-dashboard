@@ -1,3 +1,16 @@
+---
+interface Props {
+  data?: {
+    labels: string[];
+    inflows: number[];
+    outflows: number[];
+    balances: number[];
+  };
+}
+
+const { data = null } = Astro.props;
+---
+
 <section class="cash-flow-section card">
   <div class="card__header">
     <div>
@@ -13,7 +26,13 @@
     </div>
   </div>
 
-  <div id="cash-flow-chart" class="cash-flow-chart" hidden></div>
+  <div
+    id="cash-flow-chart"
+    class="cash-flow-chart"
+    data-chart={data ? JSON.stringify(data) : undefined}
+    hidden
+  >
+  </div>
 </section>
 
 <script>
@@ -46,7 +65,8 @@
     return value.toLocaleString("pt-BR", {
       style: "currency",
       currency: "BRL",
-      maximumFractionDigits: 0,
+      minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
+      maximumFractionDigits: Number.isInteger(value) ? 0 : 2,
     });
   }
 
@@ -89,7 +109,7 @@
     cashFlowChart = new ApexCharts(chartElement, {
       chart: {
         type: "line",
-        height: 340,
+        height: 280,
         toolbar: { show: false },
         background: "transparent",
         fontFamily: "inherit",
@@ -173,4 +193,8 @@
       renderCashFlowChart(event.detail);
     }
   });
+
+  if (chartElement instanceof HTMLElement && chartElement.dataset.chart) {
+    renderCashFlowChart(JSON.parse(chartElement.dataset.chart));
+  }
 </script>

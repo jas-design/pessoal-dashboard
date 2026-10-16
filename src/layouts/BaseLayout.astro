@@ -34,14 +34,19 @@ const { title = "Hub Pessoal", description = "Dashboard Executivo" } =
       (() => {
         const storageKey = "dashboard-theme";
         const savedTheme = localStorage.getItem(storageKey);
-        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        const theme = savedTheme === "light" || savedTheme === "dark"
-          ? savedTheme
-          : prefersDark
-            ? "dark"
-            : "light";
+        const preference =
+          savedTheme === "light" || savedTheme === "dark" || savedTheme === "system"
+            ? savedTheme
+            : "system";
+        const theme =
+          preference === "system"
+            ? window.matchMedia("(prefers-color-scheme: dark)").matches
+              ? "dark"
+              : "light"
+            : preference;
 
         document.documentElement.dataset.theme = theme;
+        document.documentElement.dataset.themePreference = preference;
       })();
     </script>
   </head>

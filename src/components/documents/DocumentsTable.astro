@@ -1,8 +1,13 @@
-<div class="documents-browser-state" data-documents-loading>
+<div class="documents-browser-state" data-documents-loading role="status">
   Carregando documentos...
 </div>
 
-<p class="documents-error" data-documents-error hidden></p>
+<div class="documents-error" data-documents-error role="alert" hidden>
+  <span data-documents-error-message></span>
+  <button class="button-small" type="button" data-documents-retry>
+    Tentar novamente
+  </button>
+</div>
 
 <div class="empty-state documents-empty" data-documents-empty hidden>
   <div>
@@ -37,6 +42,25 @@
     <tbody data-documents-table-body></tbody>
   </table>
 </div>
+
+<nav
+  class="documents-pagination"
+  aria-label="Paginação de documentos"
+  data-documents-pagination
+  hidden
+>
+  <p data-documents-page-summary aria-live="polite"></p>
+
+  <div>
+    <button class="button-small" type="button" data-documents-page-previous>
+      Anterior
+    </button>
+    <span data-documents-page-label></span>
+    <button class="button-small" type="button" data-documents-page-next>
+      Próxima
+    </button>
+  </div>
+</nav>
 
 <dialog class="documents-details-dialog" data-documents-details-dialog>
   <div class="documents-details-dialog__header">

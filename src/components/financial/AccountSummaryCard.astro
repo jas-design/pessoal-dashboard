@@ -1,0 +1,25 @@
+---
+interface Props {
+  title: string;
+  totalKey: string;
+  openCountKey: string;
+}
+
+const { title, totalKey, openCountKey } = Astro.props;
+---
+
+<article class="account-summary-card card">
+  <div class="account-summary-card__header">
+    <div>
+      <h2>{title}</h2>
+      <strong data-financeiro-value={totalKey}>Carregando...</strong>
+      <p data-financeiro-count={openCountKey}>Carregando...</p>
+    </div>
+
+    <div class="account-summary-card__donut is-empty" aria-hidden="true"></div>
+  </div>
+
+  <div class="account-summary-card__empty" data-financeiro-account-empty={totalKey} hidden></div>
+
+  <a class="account-summary-card__link" href="#">Ver todos</a>
+</article>

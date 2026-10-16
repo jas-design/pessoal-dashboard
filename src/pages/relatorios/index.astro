@@ -1,0 +1,225 @@
+---
+import FinancialPeriodSelect from "../../components/financial/FinancialPeriodSelect.astro";
+import DashboardLayout from "../../layouts/DashboardLayout.astro";
+import "../../styles/pages/reports.scss";
+---
+
+<DashboardLayout
+  title="Relatorios"
+  subtitle="Relatorios financeiros executivos com dados reais disponiveis."
+>
+  <section class="reports-page" data-reports-page>
+    <div class="reports-page__toolbar" aria-label="Filtros de relatorios">
+      <FinancialPeriodSelect targetPath="/relatorios" shortYear />
+
+      <label class="reports-filter">
+        <span>Empresa</span>
+        <select data-report-company aria-label="Selecionar empresa" disabled>
+          <option>Empresas nao vinculadas aos dados financeiros</option>
+        </select>
+      </label>
+
+      <label class="reports-filter">
+        <span>Tipo de relatorio</span>
+        <select data-report-type aria-label="Selecionar tipo de relatorio">
+          <option value="summary">Resumo financeiro</option>
+          <option value="revenue-expenses">Receitas e despesas</option>
+          <option value="cash-flow">Fluxo de caixa</option>
+          <option value="receivables">Contas a receber</option>
+          <option value="payables">Contas a pagar</option>
+        </select>
+      </label>
+    </div>
+
+    <article class="reports-document card">
+      <header class="reports-document__header">
+        <div>
+          <span>Relatorio financeiro</span>
+          <h2 data-report-value="period">Carregando...</h2>
+        </div>
+
+        <dl>
+          <div>
+            <dt>Gerado em</dt>
+            <dd data-report-value="generated_at">Carregando...</dd>
+          </div>
+          <div>
+            <dt>Fonte</dt>
+            <dd>Supabase</dd>
+          </div>
+        </dl>
+      </header>
+
+      <div class="reports-error" data-report-error hidden>
+        Nao foi possivel carregar todos os dados. Verifique a sessao autenticada e as permissoes RLS.
+      </div>
+
+      <section class="reports-section" data-report-section="summary">
+        <div class="reports-section__header">
+          <h3>Resumo financeiro</h3>
+          <p>KPIs consolidados do periodo selecionado.</p>
+        </div>
+
+        <div class="reports-kpi-grid">
+          <div>
+            <span>Receitas</span>
+            <strong data-report-value="summary_revenue">Carregando...</strong>
+          </div>
+          <div>
+            <span>Despesas</span>
+            <strong data-report-value="summary_expenses">Carregando...</strong>
+          </div>
+          <div>
+            <span>Lucro liquido</span>
+            <strong data-report-value="summary_net_profit">Carregando...</strong>
+          </div>
+          <div>
+            <span>Saldo em caixa</span>
+            <strong data-report-value="summary_cash_balance">Carregando...</strong>
+          </div>
+        </div>
+
+        <dl class="reports-facts">
+          <div>
+            <dt>Margem liquida</dt>
+            <dd data-report-value="summary_net_margin">Carregando...</dd>
+          </div>
+          <div>
+            <dt>Entradas no periodo</dt>
+            <dd data-report-value="summary_cash_inflows">Carregando...</dd>
+          </div>
+          <div>
+            <dt>Saidas no periodo</dt>
+            <dd data-report-value="summary_cash_outflows">Carregando...</dd>
+          </div>
+          <div>
+            <dt>Movimentacoes detalhadas</dt>
+            <dd data-report-value="summary_transaction_count">Carregando...</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="reports-section" data-report-section="revenue-expenses" hidden>
+        <div class="reports-section__header">
+          <h3>Receitas e despesas</h3>
+          <p>Comparativo do periodo com fallback seguro para metricas mensais.</p>
+        </div>
+
+        <dl class="reports-lines">
+          <div>
+            <dt>Receitas</dt>
+            <dd class="is-positive" data-report-value="revenue_expenses_revenue">
+              Carregando...
+            </dd>
+          </div>
+          <div>
+            <dt>Despesas</dt>
+            <dd class="is-negative" data-report-value="revenue_expenses_expenses">
+              Carregando...
+            </dd>
+          </div>
+          <div>
+            <dt>Lucro liquido</dt>
+            <dd data-report-value="revenue_expenses_net_profit">Carregando...</dd>
+          </div>
+          <div>
+            <dt>Margem liquida</dt>
+            <dd data-report-value="revenue_expenses_net_margin">Carregando...</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="reports-section" data-report-section="cash-flow" hidden>
+        <div class="reports-section__header">
+          <h3>Fluxo de caixa</h3>
+          <p>Visao objetiva de entradas, saidas e saldo do periodo.</p>
+        </div>
+
+        <dl class="reports-lines">
+          <div>
+            <dt>Entradas</dt>
+            <dd class="is-positive" data-report-value="cash_flow_inflows">Carregando...</dd>
+          </div>
+          <div>
+            <dt>Saidas</dt>
+            <dd class="is-negative" data-report-value="cash_flow_outflows">Carregando...</dd>
+          </div>
+          <div>
+            <dt>Saldo em caixa</dt>
+            <dd data-report-value="cash_flow_balance">Carregando...</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="reports-section" data-report-section="receivables" hidden>
+        <div class="reports-section__header">
+          <h3>Contas a receber</h3>
+          <p>Dados detalhados dependem da tabela operacional de recebiveis.</p>
+        </div>
+
+        <dl class="reports-lines">
+          <div>
+            <dt>Total em aberto</dt>
+            <dd data-report-value="receivables_total_open">Carregando...</dd>
+          </div>
+          <div>
+            <dt>Titulos em aberto</dt>
+            <dd data-report-value="receivables_open_count">Carregando...</dd>
+          </div>
+          <div>
+            <dt>Total vencido</dt>
+            <dd data-report-value="receivables_total_overdue">Carregando...</dd>
+          </div>
+          <div>
+            <dt>Titulos vencidos</dt>
+            <dd data-report-value="receivables_overdue_count">Carregando...</dd>
+          </div>
+          <div>
+            <dt>Recebidos no mes</dt>
+            <dd data-report-value="receivables_received_month">Carregando...</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="reports-section" data-report-section="payables" hidden>
+        <div class="reports-section__header">
+          <h3>Contas a pagar</h3>
+          <p>Dados detalhados dependem da tabela operacional de contas a pagar.</p>
+        </div>
+
+        <dl class="reports-lines">
+          <div>
+            <dt>Total em aberto</dt>
+            <dd data-report-value="payables_total_open">Carregando...</dd>
+          </div>
+          <div>
+            <dt>Titulos em aberto</dt>
+            <dd data-report-value="payables_open_count">Carregando...</dd>
+          </div>
+          <div>
+            <dt>Total vencido</dt>
+            <dd data-report-value="payables_total_overdue">Carregando...</dd>
+          </div>
+          <div>
+            <dt>Titulos vencidos</dt>
+            <dd data-report-value="payables_overdue_count">Carregando...</dd>
+          </div>
+          <div>
+            <dt>Pagos no mes</dt>
+            <dd data-report-value="payables_paid_month">Carregando...</dd>
+          </div>
+        </dl>
+      </section>
+    </article>
+  </section>
+</DashboardLayout>
+
+<script>
+  import { loadReportsPage } from "../../services/financial/reports-page";
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", loadReportsPage, { once: true });
+  } else {
+    loadReportsPage();
+  }
+</script>

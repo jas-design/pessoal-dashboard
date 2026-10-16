@@ -2,6 +2,8 @@
 const menuItems = [
   { label: "Dashboard", href: "/dashboard", icon: "grid", badge: null },
   { label: "Financeiro", href: "/financeiro", icon: "money", badge: null },
+  { label: "Bancos e Contas", href: "/bancos-contas", icon: "bank", badge: null },
+  { label: "Relatorios", href: "/relatorios", icon: "report", badge: null },
   { label: "Documentos", href: "/documentos", icon: "file", badge: null },
   {
     label: "Configuracoes",
@@ -17,6 +19,8 @@ const currentPath = Astro.url.pathname;
 const icons = {
   grid: "[ ]",
   money: "[$]",
+  bank: "[$]",
+  report: "[=]",
   file: "[#]",
   settings: "[=]",
   bell: "[!]",

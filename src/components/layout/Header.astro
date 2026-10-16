@@ -59,21 +59,23 @@ const unreadCount = await getUnreadNotificationsCount();
 
 <script>
   import { signOut } from "../../services/auth/auth";
+  import {
+    getCurrentEffectiveTheme,
+    initializeThemePreference,
+    loadAccountThemePreference,
+    saveAccountThemePreference,
+    toggleThemePreference,
+  } from "../../services/settings/theme";
 
   const logoutButton = document.querySelector("#logout-button");
   const themeToggle = document.querySelector<HTMLButtonElement>("[data-theme-toggle]");
-  const storageKey = "dashboard-theme";
-
-  function getCurrentTheme() {
-    return document.documentElement.dataset.theme === "dark" ? "dark" : "light";
-  }
 
   function updateThemeToggleLabel() {
     if (!themeToggle) {
       return;
     }
 
-    const nextTheme = getCurrentTheme() === "dark" ? "claro" : "escuro";
+    const nextTheme = getCurrentEffectiveTheme() === "dark" ? "claro" : "escuro";
     themeToggle.setAttribute("aria-label", `Alternar para tema ${nextTheme}`);
   }
 
@@ -82,13 +84,15 @@ const unreadCount = await getUnreadNotificationsCount();
     window.location.href = "/login";
   });
 
-  themeToggle?.addEventListener("click", () => {
-    const nextTheme = getCurrentTheme() === "dark" ? "light" : "dark";
+  themeToggle?.addEventListener("click", async () => {
+    const nextPreference = toggleThemePreference();
 
-    document.documentElement.dataset.theme = nextTheme;
-    localStorage.setItem(storageKey, nextTheme);
+    await saveAccountThemePreference(nextPreference);
     updateThemeToggleLabel();
   });
 
+  window.addEventListener("dashboard-theme-change", updateThemeToggleLabel);
+  initializeThemePreference();
+  loadAccountThemePreference().finally(updateThemeToggleLabel);
   updateThemeToggleLabel();
 </script>

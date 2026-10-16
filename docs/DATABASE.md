@@ -499,19 +499,47 @@ Tabela atual:
 - `metadata` jsonb
 - `source_created_at` timestamptz nullable
 - `source_updated_at` timestamptz nullable
+- `provider` text nullable
+- `external_file_id` text nullable
+- `external_drive_id` text nullable
+- `parent_folder_id` text nullable
+- `source_path` text nullable
+- `source_web_url` text nullable
+- `source_modified_at` timestamptz nullable
+- `is_deleted` bool
 - `last_synced_at` timestamptz nullable
 - `created_at` timestamptz
 - `updated_at` timestamptz
 
 Essa tabela funciona como catálogo.
 
+Para documentos do OneDrive, `parent_folder_id` referencia
+`onedrive_folders.external_folder_id` dentro do mesmo
+`external_drive_id`. A data de modificação exibida ao usuário deve usar
+`source_modified_at`; `updated_at` representa a atualização do registro no
+catálogo e não a alteração do arquivo na origem.
+
 Um documento pode estar:
 
 - no Supabase Storage
 - no Google Drive
-- futuramente no OneDrive
+- no OneDrive
 
 O arquivo original não precisa necessariamente ser copiado para o Supabase.
+
+## onedrive_folders
+
+Catálogo da hierarquia de pastas já sincronizada do OneDrive:
+
+- `external_folder_id` text
+- `external_parent_id` text nullable
+- `external_drive_id` text
+- `folder_name` text
+
+A relação pai/filho deve sempre combinar `external_drive_id` com
+`external_parent_id`, pois identificadores de pasta não devem ser tratados
+isoladamente entre drives. O dashboard consulta essa tabela com a sessão do
+usuário autenticado e depende das policies RLS existentes.
 
 ---
 

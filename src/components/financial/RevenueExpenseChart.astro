@@ -1,0 +1,165 @@
+<section class="revenue-expense-chart card">
+  <div class="card__header revenue-expense-chart__header">
+    <div>
+      <h2>Receitas e despesas</h2>
+      <p>Comparativo mensal com base nos periodos disponiveis.</p>
+    </div>
+
+    <dl class="revenue-expense-chart__summary">
+      <div>
+        <dt>Receitas</dt>
+        <dd class="is-positive" data-financeiro-value="revenue_expense_revenue">
+          Carregando...
+        </dd>
+      </div>
+      <div>
+        <dt>Despesas</dt>
+        <dd class="is-negative" data-financeiro-value="revenue_expense_expenses">
+          Carregando...
+        </dd>
+      </div>
+      <div>
+        <dt>Lucro liquido</dt>
+        <dd data-financeiro-value="revenue_expense_net_profit">Carregando...</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="empty-state revenue-expense-chart__empty" data-revenue-expense-empty>
+    <div>
+      <h3>Sem dados para receitas e despesas</h3>
+      <p>Quando houver historico financeiro, o grafico aparecera aqui.</p>
+    </div>
+  </div>
+
+  <div id="revenue-expense-chart" class="revenue-expense-chart__canvas" hidden></div>
+</section>
+
+<script>
+  import ApexCharts from "apexcharts";
+
+  type RevenueExpenseChartData = {
+    labels: string[];
+    revenues: Array<number | null>;
+    expenses: Array<number | null>;
+  };
+
+  const chartElement = document.querySelector("#revenue-expense-chart");
+  const emptyElement = document.querySelector("[data-revenue-expense-empty]");
+  let chart: ApexCharts | null = null;
+
+  function getCssVar(name: string) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+
+  function isRealNumber(value: number | null | undefined): value is number {
+    return typeof value === "number" && Number.isFinite(value);
+  }
+
+  function formatCurrency(value: number | null | undefined) {
+    if (!isRealNumber(value)) {
+      return "Sem dados";
+    }
+
+    return value.toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+      minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
+      maximumFractionDigits: Number.isInteger(value) ? 0 : 2,
+    });
+  }
+
+  function hasChartData(data: RevenueExpenseChartData) {
+    return [data.revenues, data.expenses].some((series) => series.some(isRealNumber));
+  }
+
+  function toggleEmptyState(isEmpty: boolean) {
+    if (chartElement instanceof HTMLElement) {
+      chartElement.hidden = isEmpty;
+    }
+
+    if (emptyElement instanceof HTMLElement) {
+      emptyElement.hidden = !isEmpty;
+    }
+  }
+
+  async function renderRevenueExpenseChart(data: RevenueExpenseChartData) {
+    if (!(chartElement instanceof HTMLElement)) {
+      return;
+    }
+
+    if (!data.labels.length || !hasChartData(data)) {
+      toggleEmptyState(true);
+      await chart?.destroy();
+      chart = null;
+      return;
+    }
+
+    toggleEmptyState(false);
+    await chart?.destroy();
+
+    chart = new ApexCharts(chartElement, {
+      chart: {
+        type: "bar",
+        height: 280,
+        toolbar: { show: false },
+        background: "transparent",
+        fontFamily: "inherit",
+      },
+      series: [
+        { name: "Receitas", data: data.revenues },
+        { name: "Despesas", data: data.expenses },
+      ],
+      colors: [getCssVar("--chart-positive"), getCssVar("--chart-negative")],
+      dataLabels: { enabled: false },
+      plotOptions: {
+        bar: {
+          borderRadius: 7,
+          columnWidth: "24%",
+        },
+      },
+      xaxis: {
+        categories: data.labels,
+        labels: {
+          style: {
+            colors: getCssVar("--text-muted"),
+            fontSize: "12px",
+            fontWeight: 600,
+          },
+        },
+      },
+      yaxis: {
+        labels: {
+          formatter: formatCurrency,
+          style: {
+            colors: getCssVar("--text-muted"),
+            fontSize: "12px",
+          },
+        },
+      },
+      grid: {
+        borderColor: getCssVar("--border-subtle"),
+        strokeDashArray: 4,
+      },
+      legend: {
+        position: "top",
+        horizontalAlign: "right",
+        labels: {
+          colors: getCssVar("--text-secondary"),
+        },
+      },
+      tooltip: {
+        theme: "dark",
+        y: { formatter: formatCurrency },
+      },
+    });
+
+    await chart.render();
+  }
+
+  window.addEventListener("revenue-expense-data", (event) => {
+    if (event instanceof CustomEvent) {
+      renderRevenueExpenseChart(event.detail);
+    }
+  });
+</script>

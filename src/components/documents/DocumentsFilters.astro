@@ -1,12 +1,19 @@
 <section class="documents-filters" aria-label="Filtros de documentos">
-  <label class="documents-search">
-    <span>Buscar</span>
-    <input
-      type="search"
-      placeholder="Buscar por nome de arquivo, pasta, empresa..."
-      data-documents-search
-    />
-  </label>
+  <div class="documents-search">
+    <label for="documents-search-input">Buscar</label>
+
+    <div class="documents-search__control">
+      <input
+        id="documents-search-input"
+        type="search"
+        placeholder="Buscar por nome de arquivo, pasta ou departamento..."
+        data-documents-search
+      />
+      <button type="button" data-documents-search-clear aria-label="Limpar busca" hidden>
+        ×
+      </button>
+    </div>
+  </div>
 
   <div class="documents-filter-grid">
     <label>

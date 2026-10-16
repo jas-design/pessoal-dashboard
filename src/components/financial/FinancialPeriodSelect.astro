@@ -1,4 +1,18 @@
-<div class="financial-period-select" data-financial-period-select>
+---
+interface Props {
+  targetPath?: string;
+  shortYear?: boolean;
+}
+
+const { targetPath = "/dashboard", shortYear = false } = Astro.props;
+---
+
+<div
+  class="financial-period-select"
+  data-financial-period-select
+  data-target-path={targetPath}
+  data-short-year={shortYear ? "true" : "false"}
+>
   <span class="financial-period-select__icon" aria-hidden="true">
     <svg viewBox="0 0 24 24" focusable="false">
       <path d="M7 3v3" />
@@ -33,11 +47,20 @@
   function navigateToPeriod(value) {
     const [year, month] = value.split("-").map(Number);
     const url = new URL(window.location.href);
+    const container = document.querySelector("[data-financial-period-select]");
+    const targetPath =
+      container instanceof HTMLElement ? container.dataset.targetPath : "/dashboard";
 
-    url.pathname = "/dashboard";
+    url.pathname = targetPath || "/dashboard";
     url.searchParams.set("year", String(year));
     url.searchParams.set("month", String(month));
     window.location.href = url.toString();
+  }
+
+  function formatPeriodLabel(year, month, useShortYear) {
+    const label = formatMonthYear(year, month);
+
+    return useShortYear ? label.replace("/20", "/") : label;
   }
 
   async function loadFinancialPeriods() {
@@ -50,6 +73,9 @@
     try {
       const periods = await getAvailableFinancialPeriods();
       const selectedPeriod = readSelectedPeriod(periods);
+      const container = document.querySelector("[data-financial-period-select]");
+      const useShortYear =
+        container instanceof HTMLElement && container.dataset.shortYear === "true";
 
       if (!periods.length || !selectedPeriod) {
         select.replaceChildren(new Option("Sem periodos", ""));
@@ -60,7 +86,7 @@
         ...periods.map((period) => {
           const value = `${period.year}-${period.month}`;
           const option = new Option(
-            formatMonthYear(period.year, period.month),
+            formatPeriodLabel(period.year, period.month, useShortYear),
             value
           );
 

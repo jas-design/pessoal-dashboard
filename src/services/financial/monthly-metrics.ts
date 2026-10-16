@@ -76,6 +76,21 @@ function monthIndex(period: FinancialPeriod) {
   return period.year * 12 + period.month;
 }
 
+function isMeaningfulNumber(value: number | null) {
+  return value !== null && Number.isFinite(value) && value !== 0;
+}
+
+function isMeaningfulFinancialMetric(metric: MonthlyFinancialMetrics) {
+  // Placeholder rows can exist with every financial metric empty/defaulted to zero.
+  // A period is available only when at least one primary recorded metric is real.
+  return [
+    metric.revenue,
+    metric.net_profit,
+    metric.net_margin,
+    metric.cash_balance,
+  ].some(isMeaningfulNumber);
+}
+
 function toMonthlyFinancialMetrics(
   metric: FinancialMonthlyMetricsRow | null
 ): MonthlyFinancialMetrics | null {
@@ -134,7 +149,7 @@ export async function getPreviousMonthFinancialMetrics(
 export async function getAvailableFinancialPeriods(): Promise<FinancialPeriod[]> {
   const { data, error } = await supabase
     .from("financial_monthly_metrics")
-    .select("year, month")
+    .select("*")
     .order("year", { ascending: false })
     .order("month", { ascending: false });
 
@@ -142,7 +157,14 @@ export async function getAvailableFinancialPeriods(): Promise<FinancialPeriod[]>
     throw new Error(error.message);
   }
 
-  return (data ?? []) as FinancialPeriod[];
+  return ((data ?? []) as FinancialMonthlyMetricsRow[])
+    .map(toMonthlyFinancialMetrics)
+    .filter((metric): metric is MonthlyFinancialMetrics => metric !== null)
+    .filter(isMeaningfulFinancialMetric)
+    .map((metric) => ({
+      year: metric.year,
+      month: metric.month,
+    }));
 }
 
 export async function getFinancialMetricHistory(
@@ -153,7 +175,6 @@ export async function getFinancialMetricHistory(
   assertValidPeriod(year, month);
 
   const selectedMonthIndex = monthIndex({ year, month });
-  const firstMonthIndex = selectedMonthIndex - Math.max(limit - 1, 0);
 
   const { data, error } = await supabase
     .from("financial_monthly_metrics")
@@ -162,8 +183,7 @@ export async function getFinancialMetricHistory(
       `and(year.eq.${year},month.lte.${month}),and(year.lt.${year})`
     )
     .order("year", { ascending: false })
-    .order("month", { ascending: false })
-    .limit(limit);
+    .order("month", { ascending: false });
 
   if (error) {
     throw new Error(error.message);
@@ -172,13 +192,12 @@ export async function getFinancialMetricHistory(
   return ((data ?? []) as FinancialMonthlyMetricsRow[])
     .map(toMonthlyFinancialMetrics)
     .filter((metric): metric is MonthlyFinancialMetrics => metric !== null)
+    .filter(isMeaningfulFinancialMetric)
     .filter((metric) => {
       const currentMonthIndex = monthIndex(metric);
 
-      return (
-        currentMonthIndex >= firstMonthIndex &&
-        currentMonthIndex <= selectedMonthIndex
-      );
+      return currentMonthIndex <= selectedMonthIndex;
     })
+    .slice(0, limit)
     .sort((current, next) => monthIndex(current) - monthIndex(next));
 }

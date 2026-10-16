@@ -1,40 +1,307 @@
 ---
-import FinancialFilters from "../../components/financial/FinancialFilters.astro";
-import FinancialSummaryCards from "../../components/financial/FinancialSummaryCards.astro";
-import FinancialTable from "../../components/financial/FinancialTable.astro";
+import AccountSummaryCard from "../../components/financial/AccountSummaryCard.astro";
+import CashFlowChart from "../../components/financial/CashFlowChart.astro";
+import FinancialPeriodSelect from "../../components/financial/FinancialPeriodSelect.astro";
+import MonthlySummaryCard from "../../components/financial/MonthlySummaryCard.astro";
+import RevenueExpenseChart from "../../components/financial/RevenueExpenseChart.astro";
 import DashboardLayout from "../../layouts/DashboardLayout.astro";
 import "../../styles/pages/financial.scss";
 ---
 
 <DashboardLayout
   title="Financeiro"
-  subtitle="Controle de contas, movimentacoes e situacao financeira."
+  subtitle="Visao completa da sua saude financeira."
 >
-  <FinancialSummaryCards />
+  <section class="financeiro-page" data-financeiro-page>
+    <div class="financeiro-page__toolbar" aria-label="Controles financeiros">
+      <FinancialPeriodSelect targetPath="/financeiro" shortYear />
 
-  <nav class="financial-page-tabs" aria-label="Secoes financeiras">
-    <button
-      class="is-active"
-      type="button"
-      data-financial-tab="overview"
-      aria-selected="true"
+      <label class="financeiro-company-select">
+        <span>Empresa</span>
+        <select data-financeiro-company aria-label="Selecionar empresa" disabled>
+          <option>Empresas nao vinculadas aos dados financeiros</option>
+        </select>
+      </label>
+
+    </div>
+
+    <nav class="financial-page-tabs" aria-label="Secoes financeiras">
+      <a href="/financeiro" data-financeiro-view-link="overview">Visao geral</a>
+      <a href="/financeiro?view=receber" data-financeiro-view-link="receber">
+        A receber
+      </a>
+      <a href="/financeiro?view=pagar" data-financeiro-view-link="pagar">
+        A pagar
+      </a>
+      <a
+        href="/financeiro?view=movimentacoes"
+        data-financeiro-view-link="movimentacoes"
+      >
+        Movimentacoes
+      </a>
+    </nav>
+
+    <div data-financeiro-view="overview">
+      <section class="receivables-aging-card card">
+        <div class="card__header">
+          <div>
+            <h2>Total a receber</h2>
+            <p>Distribuicao por vencimento quando houver dados detalhados.</p>
+          </div>
+
+          <strong data-financeiro-value="accounts_receivable">Carregando...</strong>
+        </div>
+
+        <div class="receivables-aging-card__bar" data-financeiro-aging-bar hidden>
+          <span class="is-positive" data-financeiro-aging-segment="due"></span>
+          <span class="is-warning" data-financeiro-aging-segment="overdue1To15"></span>
+          <span class="is-warning" data-financeiro-aging-segment="overdue16To30"></span>
+          <span class="is-negative" data-financeiro-aging-segment="overdue31To45"></span>
+          <span class="is-negative" data-financeiro-aging-segment="overdue45Plus"></span>
+        </div>
+
+        <div class="receivables-aging-card__legend" data-financeiro-aging-list hidden>
+          <div class="receivables-aging-card__item">
+            <span>A vencer</span>
+            <strong data-financeiro-value="aging_due">Carregando...</strong>
+          </div>
+          <div class="receivables-aging-card__item">
+            <span>1-15 dias</span>
+            <strong data-financeiro-value="aging_overdue_1_15">Carregando...</strong>
+          </div>
+          <div class="receivables-aging-card__item">
+            <span>16-30 dias</span>
+            <strong data-financeiro-value="aging_overdue_16_30">Carregando...</strong>
+          </div>
+          <div class="receivables-aging-card__item">
+            <span>31-45 dias</span>
+            <strong data-financeiro-value="aging_overdue_31_45">Carregando...</strong>
+          </div>
+          <div class="receivables-aging-card__item">
+            <span>45+ dias</span>
+            <strong data-financeiro-value="aging_overdue_45_plus">Carregando...</strong>
+          </div>
+        </div>
+
+        <div class="receivables-aging-card__empty" data-financeiro-aging-empty>
+          Detalhamento por vencimento ainda nao disponivel.
+        </div>
+      </section>
+
+      <div class="financeiro-cash-grid">
+        <CashFlowChart />
+        <MonthlySummaryCard />
+      </div>
+
+      <section class="financeiro-accounts-grid" aria-label="Contas">
+        <AccountSummaryCard
+          title="Contas a receber"
+          totalKey="accounts_receivable"
+          openCountKey="accounts_receivable_open_count"
+        />
+        <AccountSummaryCard
+          title="Contas a pagar"
+          totalKey="accounts_payable"
+          openCountKey="accounts_payable_open_count"
+        />
+      </section>
+
+      <RevenueExpenseChart />
+    </div>
+
+    <section class="financeiro-operational-card card" data-financeiro-view="receber" hidden>
+      <div class="financial-page-table__header">
+        <div>
+          <h2>A receber</h2>
+          <p>Titulos do periodo selecionado.</p>
+        </div>
+      </div>
+
+      <div class="financeiro-operational-summary" aria-label="Resumo de contas a receber">
+        <div>
+          <span>Total em aberto</span>
+          <strong data-financeiro-value="receivables_total_open">Carregando...</strong>
+        </div>
+        <div>
+          <span>Titulos</span>
+          <strong data-financeiro-value="receivables_open_count">Carregando...</strong>
+        </div>
+        <div>
+          <span>Total vencido</span>
+          <strong data-financeiro-value="receivables_total_overdue">Carregando...</strong>
+        </div>
+      </div>
+
+      <div class="financeiro-table-filters" aria-label="Filtros de contas a receber">
+        <label>
+          <span>Buscar</span>
+          <input
+            type="search"
+            data-financeiro-filter="receivables-search"
+            placeholder="Cliente ou descricao"
+          />
+        </label>
+        <label>
+          <span>Status</span>
+          <select data-financeiro-filter="receivables-status">
+            <option value="">Todos</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="financial-page-table__scroll">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Cliente / descricao</th>
+              <th scope="col">Vencimento</th>
+              <th scope="col">Valor</th>
+              <th scope="col">Status</th>
+            </tr>
+          </thead>
+          <tbody data-financeiro-receivables-body></tbody>
+        </table>
+      </div>
+
+      <div class="empty-state financeiro-table-empty" data-financeiro-receivables-empty hidden>
+        <div>
+          <h3>Nenhum titulo a receber encontrado.</h3>
+          <p>Quando houver dados reais no periodo, eles aparecerao aqui.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="financeiro-operational-card card" data-financeiro-view="pagar" hidden>
+      <div class="financial-page-table__header">
+        <div>
+          <h2>A pagar</h2>
+          <p>Compromissos do periodo selecionado.</p>
+        </div>
+      </div>
+
+      <div class="financeiro-operational-summary" aria-label="Resumo de contas a pagar">
+        <div>
+          <span>Total em aberto</span>
+          <strong data-financeiro-value="payables_total_open">Carregando...</strong>
+        </div>
+        <div>
+          <span>Titulos</span>
+          <strong data-financeiro-value="payables_open_count">Carregando...</strong>
+        </div>
+        <div>
+          <span>Total vencido</span>
+          <strong data-financeiro-value="payables_total_overdue">Carregando...</strong>
+        </div>
+      </div>
+
+      <div class="financeiro-table-filters" aria-label="Filtros de contas a pagar">
+        <label>
+          <span>Buscar</span>
+          <input
+            type="search"
+            data-financeiro-filter="payables-search"
+            placeholder="Fornecedor ou descricao"
+          />
+        </label>
+        <label>
+          <span>Status</span>
+          <select data-financeiro-filter="payables-status">
+            <option value="">Todos</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="financial-page-table__scroll">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Fornecedor / descricao</th>
+              <th scope="col">Vencimento</th>
+              <th scope="col">Valor</th>
+              <th scope="col">Status</th>
+            </tr>
+          </thead>
+          <tbody data-financeiro-payables-body></tbody>
+        </table>
+      </div>
+
+      <div class="empty-state financeiro-table-empty" data-financeiro-payables-empty hidden>
+        <div>
+          <h3>Nenhuma conta a pagar encontrada.</h3>
+          <p>Quando houver dados reais no periodo, elas aparecerao aqui.</p>
+        </div>
+      </div>
+    </section>
+
+    <section
+      class="financeiro-operational-card card"
+      data-financeiro-view="movimentacoes"
+      hidden
     >
-      Visao Geral
-    </button>
+      <div class="financial-page-table__header">
+        <div>
+          <h2>Movimentacoes</h2>
+          <p>Lancamentos financeiros do periodo selecionado.</p>
+        </div>
+      </div>
 
-    <button type="button" data-financial-tab="receivable" aria-selected="false">
-      A Receber
-    </button>
+      <div class="financeiro-table-filters" aria-label="Filtros de movimentacoes">
+        <label>
+          <span>Buscar</span>
+          <input
+            type="search"
+            data-financeiro-filter="transactions-search"
+            placeholder="Descricao ou categoria"
+          />
+        </label>
+        <label>
+          <span>Tipo</span>
+          <select data-financeiro-filter="transactions-type">
+            <option value="">Todos</option>
+            <option value="income">Receitas</option>
+            <option value="expense">Despesas</option>
+          </select>
+        </label>
+        <label>
+          <span>Categoria</span>
+          <select data-financeiro-filter="transactions-category">
+            <option value="">Todas</option>
+          </select>
+        </label>
+      </div>
 
-    <button type="button" data-financial-tab="payable" aria-selected="false">
-      A Pagar
-    </button>
+      <div class="financial-page-table__scroll">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Data</th>
+              <th scope="col">Descricao</th>
+              <th scope="col">Categoria</th>
+              <th scope="col">Tipo</th>
+              <th scope="col">Valor</th>
+              <th scope="col">Status</th>
+            </tr>
+          </thead>
+          <tbody data-financeiro-transactions-body></tbody>
+        </table>
+      </div>
 
-    <button type="button" data-financial-tab="transactions" aria-selected="false">
-      Movimentacoes
-    </button>
-  </nav>
-
-  <FinancialFilters />
-  <FinancialTable />
+      <div class="empty-state financeiro-table-empty" data-financeiro-transactions-empty hidden>
+        <div>
+          <h3>Nenhuma movimentacao encontrada.</h3>
+          <p>Quando houver lancamentos reais no periodo, eles aparecerao aqui.</p>
+        </div>
+      </div>
+    </section>
+  </section>
 </DashboardLayout>
+
+<script>
+  import { loadFinanceiroPage } from "../../services/financial/financeiro-page";
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", loadFinanceiroPage, { once: true });
+  } else {
+    loadFinanceiroPage();
+  }
+</script>

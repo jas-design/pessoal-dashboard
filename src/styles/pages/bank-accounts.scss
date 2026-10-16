@@ -1,0 +1,225 @@
+.bank-accounts-page {
+  display: grid;
+  gap: var(--space-xl);
+}
+
+.bank-accounts-page__toolbar {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.bank-accounts-company-select {
+  width: min(300px, 100%);
+  flex: 0 1 300px;
+  display: grid;
+  gap: var(--space-sm);
+
+  span {
+    color: var(--text-muted);
+    font-size: var(--font-small);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  select {
+    height: 44px;
+  }
+}
+
+.bank-accounts-page .financial-period-select {
+  width: min(210px, 100%);
+  height: auto;
+  flex: 0 1 210px;
+  display: grid;
+  gap: var(--space-sm);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-primary);
+
+  &::after,
+  .financial-period-select__icon {
+    display: none;
+  }
+
+  .financial-period-select__label {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    color: var(--text-secondary);
+    font-size: var(--font-small);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  select {
+    height: 44px;
+    min-height: 44px;
+    padding: 0 var(--space-md);
+    border: 1px solid var(--input-border);
+    border-radius: var(--radius-control);
+    background: var(--input-background);
+    color: var(--text-primary);
+    color-scheme: light;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    line-height: normal;
+    appearance: auto;
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.75;
+    }
+  }
+}
+
+.bank-accounts-page select,
+.bank-accounts-page .financial-period-select select {
+  background: var(--input-background);
+  border-color: var(--input-border);
+  color: var(--text-primary);
+}
+
+.bank-accounts-page select option,
+.bank-accounts-page .financial-period-select select option {
+  background: var(--surface-card);
+  color: var(--text-primary);
+}
+
+html[data-theme="dark"] .bank-accounts-page select {
+  color-scheme: dark;
+}
+
+html[data-theme="light"] .bank-accounts-page select {
+  color-scheme: light;
+}
+
+.bank-accounts-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-lg);
+}
+
+.bank-accounts-summary-card {
+  min-height: 150px;
+  display: grid;
+  align-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+
+  span {
+    color: var(--text-muted);
+    font-size: var(--font-small);
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  strong {
+    color: var(--text-primary);
+    font-size: clamp(1.45rem, 1.05rem + 0.8vw, 1.95rem);
+    font-weight: var(--font-weight-bold);
+    letter-spacing: -0.04em;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  p {
+    color: var(--text-secondary);
+    font-size: var(--font-small);
+    line-height: 1.45;
+  }
+}
+
+.bank-accounts-card {
+  display: grid;
+  gap: var(--space-lg);
+  padding: var(--space-xl);
+
+  .card__header {
+    margin-bottom: 0;
+
+    p {
+      margin-top: var(--space-xs);
+    }
+  }
+}
+
+.bank-accounts-table__scroll {
+  overflow-x: auto;
+}
+
+.bank-accounts-card table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+
+  th,
+  td {
+    padding: var(--space-md);
+    border-bottom: 1px solid var(--border-subtle);
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  th {
+    color: var(--text-muted);
+    font-size: var(--font-small);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  td {
+    color: var(--text-secondary);
+    font-size: var(--font-body);
+  }
+
+  td:nth-child(2) {
+    white-space: normal;
+  }
+}
+
+.bank-accounts-empty {
+  min-height: 180px;
+  padding: var(--space-xl);
+}
+
+.bank-accounts-page .is-positive {
+  color: var(--chart-positive);
+}
+
+.bank-accounts-page .is-negative {
+  color: var(--chart-negative);
+}
+
+@media (max-width: 1200px) {
+  .bank-accounts-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 980px) {
+  .bank-accounts-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .bank-accounts-card {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 640px) {
+  .bank-accounts-page__toolbar,
+  .bank-accounts-company-select,
+  .bank-accounts-page .financial-period-select {
+    width: 100%;
+  }
+
+  .bank-accounts-card {
+    padding: var(--space-lg);
+  }
+}

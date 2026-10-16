@@ -1,196 +1,30 @@
----
-// Temporary local folder tree until Microsoft Graph synchronization is implemented.
-// Do not insert these folders into Supabase.
----
-
 <aside class="documents-folder-panel">
   <div class="documents-panel-header">
     <span>Pastas</span>
-    <small>Visual temporario</small>
+    <small>OneDrive</small>
   </div>
 
-  <nav class="documents-folder-tree" aria-label="Pastas de documentos">
-    <ul>
-      <li>
-        <button
-          class="is-expanded"
-          type="button"
-          data-folder-toggle
-          data-folder-id="root"
-          data-folder-path="Todas as pastas"
-          data-folder-name="Todas as pastas"
-          aria-expanded="true"
-        >
-          <span aria-hidden="true">&rsaquo;</span>
-          Todas as pastas
-        </button>
+  <nav class="documents-folder-tree" aria-label="Pastas do OneDrive" data-documents-folder-tree>
+    <p class="documents-folder-state" data-documents-folders-loading role="status">
+      Carregando pastas...
+    </p>
 
-        <ul data-parent-id="root">
-          <li>
-            <button
-              type="button"
-              data-folder-toggle
-              data-folder-id="onedrive"
-              data-folder-path="OneDrive"
-              data-folder-name="OneDrive"
-              aria-expanded="false"
-            >
-              <span aria-hidden="true">&rsaquo;</span>
-              OneDrive
-            </button>
+    <div
+      class="documents-folder-state documents-folder-state--error"
+      data-documents-folders-error
+      role="alert"
+      hidden
+    >
+      <span data-documents-folders-error-message></span>
+      <button class="button-small" type="button" data-documents-folders-retry>
+        Tentar novamente
+      </button>
+    </div>
 
-            <ul data-parent-id="onedrive" hidden>
-              <li>
-                <button
-                  type="button"
-                  data-folder-toggle
-                  data-folder-id="empresa-a"
-                  data-folder-path="OneDrive|Empresa A"
-                  data-folder-name="Empresa A"
-                  aria-expanded="false"
-                >
-                  <span aria-hidden="true">&rsaquo;</span>
-                  Empresa A
-                </button>
+    <p class="documents-folder-state" data-documents-folders-empty hidden>
+      Nenhuma pasta do OneDrive encontrada.
+    </p>
 
-                <ul data-parent-id="empresa-a" hidden>
-                  <li>
-                    <button
-                      type="button"
-                      data-folder-toggle
-                      data-folder-id="empresa-a-empresa"
-                      data-folder-path="OneDrive|Empresa A|Empresa"
-                      data-folder-name="Empresa"
-                      aria-expanded="false"
-                    >
-                      <span aria-hidden="true">&rsaquo;</span>
-                      Empresa
-                    </button>
-
-                    <ul data-parent-id="empresa-a-empresa" hidden>
-                      <li>
-                        <button
-                          type="button"
-                          data-folder-toggle
-                          data-folder-id="empresa-a-financeiro"
-                          data-folder-path="OneDrive|Empresa A|Empresa|Financeiro"
-                          data-folder-name="Financeiro"
-                          aria-expanded="false"
-                        >
-                          <span aria-hidden="true">&rsaquo;</span>
-                          Financeiro
-                        </button>
-
-                        <ul data-parent-id="empresa-a-financeiro" hidden>
-                          <li>
-                            <button
-                              type="button"
-                              data-folder-toggle
-                              data-folder-id="empresa-a-financeiro-2026"
-                              data-folder-path="OneDrive|Empresa A|Empresa|Financeiro|2026"
-                              data-folder-name="2026"
-                              aria-expanded="false"
-                            >
-                              <span aria-hidden="true">&rsaquo;</span>
-                              2026
-                            </button>
-
-                            <ul data-parent-id="empresa-a-financeiro-2026" hidden>
-                              <li>
-                                <button
-                                  type="button"
-                                  data-folder-path="OneDrive|Empresa A|Empresa|Financeiro|2026|Agosto"
-                                  data-folder-name="Agosto"
-                                >
-                                  <span aria-hidden="true">&rsaquo;</span>
-                                  Agosto
-                                </button>
-                              </li>
-
-                              <li>
-                                <button
-                                  type="button"
-                                  data-folder-path="OneDrive|Empresa A|Empresa|Financeiro|2026|Julho"
-                                  data-folder-name="Julho"
-                                >
-                                  <span aria-hidden="true">&rsaquo;</span>
-                                  Julho
-                                </button>
-                              </li>
-
-                              <li>
-                                <button
-                                  type="button"
-                                  data-folder-path="OneDrive|Empresa A|Empresa|Financeiro|2026|Junho"
-                                  data-folder-name="Junho"
-                                >
-                                  <span aria-hidden="true">&rsaquo;</span>
-                                  Junho
-                                </button>
-                              </li>
-                            </ul>
-                          </li>
-
-                          <li>
-                            <button
-                              type="button"
-                              data-folder-path="OneDrive|Empresa A|Empresa|Financeiro|2025"
-                              data-folder-name="2025"
-                            >
-                              <span aria-hidden="true">&rsaquo;</span>
-                              2025
-                            </button>
-                          </li>
-                        </ul>
-                      </li>
-
-                      <li>
-                        <button
-                          type="button"
-                          data-folder-path="OneDrive|Empresa A|Empresa|Administrativo"
-                          data-folder-name="Administrativo"
-                        >
-                          <span aria-hidden="true">&rsaquo;</span>
-                          Administrativo
-                        </button>
-                      </li>
-                    </ul>
-                  </li>
-
-                  <li>
-                    <button
-                      type="button"
-                      data-folder-path="OneDrive|Empresa A|Pessoal"
-                      data-folder-name="Pessoal"
-                    >
-                      <span aria-hidden="true">&rsaquo;</span>
-                      Pessoal
-                    </button>
-                  </li>
-                </ul>
-              </li>
-
-              <li>
-                <button
-                  type="button"
-                  data-folder-path="OneDrive|Empresa B"
-                  data-folder-name="Empresa B"
-                >
-                  <span aria-hidden="true">&rsaquo;</span>
-                  Empresa B
-                </button>
-              </li>
-            </ul>
-          </li>
-
-          <li>
-            <button type="button" data-folder-path="Uploads" data-folder-name="Uploads">
-              <span aria-hidden="true">&rsaquo;</span>
-              Uploads
-            </button>
-          </li>
-        </ul>
-      </li>
-    </ul>
+    <ul data-documents-folder-root hidden></ul>
   </nav>
 </aside>
