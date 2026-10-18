@@ -1,0 +1,31 @@
+services:
+  financial-xlsx-worker:
+    build:
+      context: ../..
+      dockerfile: workers/financial-xlsx/Dockerfile
+    restart: unless-stopped
+    environment:
+      FINANCIAL_XLSX_WORKER_SECRET: ${FINANCIAL_XLSX_WORKER_SECRET:?configure um segredo de pelo menos 32 bytes}
+      FINANCIAL_XLSX_WORKER_HOST: 0.0.0.0
+      FINANCIAL_XLSX_WORKER_PORT: 8787
+      FINANCIAL_XLSX_MAX_FILE_SIZE: 26214400
+      FINANCIAL_XLSX_TIMEOUT_MS: 30000
+      FINANCIAL_XLSX_MAX_OLD_SPACE_MB: 256
+    expose:
+      - "8787"
+    networks:
+      - financial_internal
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777,noexec,nosuid,nodev
+    mem_limit: 384m
+    cpus: 0.75
+    pids_limit: 64
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+networks:
+  financial_internal:
+    internal: true

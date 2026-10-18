@@ -18,9 +18,10 @@ import "../../styles/pages/financial.scss";
 
       <label class="financeiro-company-select">
         <span>Empresa</span>
-        <select data-financeiro-company aria-label="Selecionar empresa" disabled>
-          <option>Empresas nao vinculadas aos dados financeiros</option>
+        <select data-financeiro-company aria-label="Selecionar empresa">
+          <option>Carregando empresas...</option>
         </select>
+        <small data-financeiro-company-status aria-live="polite" hidden></small>
       </label>
 
     </div>
@@ -39,7 +40,10 @@ import "../../styles/pages/financial.scss";
       >
         Movimentacoes
       </a>
+      <a href="/financeiro/revisao" data-financeiro-review-link>Revisao de dados</a>
     </nav>
+
+    <p class="financeiro-data-status" data-financeiro-data-status role="status" hidden></p>
 
     <div data-financeiro-view="overview">
       <section class="receivables-aging-card card">

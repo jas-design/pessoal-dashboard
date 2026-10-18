@@ -1,0 +1,50 @@
+services:
+  financial-xlsx-worker:
+    image: fabio-financial-xlsx-worker:06e-candidate
+    build:
+      context: ../..
+      dockerfile: workers/financial-xlsx/Dockerfile
+    restart: unless-stopped
+    init: true
+    environment:
+      FINANCIAL_XLSX_WORKER_SECRET_FILE: /run/secrets/financial_xlsx_worker_auth
+      FINANCIAL_XLSX_WORKER_HOST: 0.0.0.0
+      FINANCIAL_XLSX_WORKER_PORT: 8787
+      FINANCIAL_XLSX_MAX_FILE_SIZE: 26214400
+      FINANCIAL_XLSX_TIMEOUT_MS: 30000
+      FINANCIAL_XLSX_MAX_OLD_SPACE_MB: 256
+    expose:
+      - "8787"
+    networks:
+      n8n_runtime:
+        aliases:
+          - financial-xlsx-worker
+    secrets:
+      - source: financial_xlsx_worker_auth
+        target: financial_xlsx_worker_auth
+        mode: 0444
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777,noexec,nosuid,nodev
+    mem_limit: 384m
+    cpus: 0.75
+    pids_limit: 64
+    stop_grace_period: 15s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  n8n_runtime:
+    external: true
+    name: ${N8N_DOCKER_NETWORK:?informe a rede Docker existente do executor n8n}
+
+secrets:
+  financial_xlsx_worker_auth:
+    file: ${FINANCIAL_XLSX_WORKER_SECRET_PATH:?informe o caminho absoluto do arquivo de segredo}

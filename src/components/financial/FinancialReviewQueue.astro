@@ -1,0 +1,196 @@
+<section class="financial-review" data-financial-review-page>
+  <nav class="financial-review__breadcrumb" aria-label="Navegação estrutural">
+    <a href="/financeiro" data-review-back-link>Financeiro</a>
+    <span aria-hidden="true">/</span>
+    <span aria-current="page">Revisão de dados</span>
+  </nav>
+
+  <aside class="financial-review__notice" aria-label="Modo de segurança da revisão">
+    <div>
+      <span class="financial-review__notice-icon" aria-hidden="true">✓</span>
+      <strong>Consulta segura, sem decisões nesta etapa</strong>
+    </div>
+    <p>
+      Aprovação, rejeição e classificação permanecem bloqueadas até que o contrato
+      de autorização informe explicitamente as capacidades do usuário. Nenhum valor
+      desta tela é publicado nos indicadores financeiros.
+    </p>
+  </aside>
+
+  <section class="financial-review__readiness" aria-label="Estado da integração XLSX">
+    <article>
+      <span>Contrato preparado</span>
+      <strong>financial-extraction.v1</strong>
+    </article>
+    <article>
+      <span>Estado obrigatório</span>
+      <strong>needs_review</strong>
+    </article>
+    <article>
+      <span>Publicação</span>
+      <strong>publishable: false</strong>
+    </article>
+  </section>
+
+  <section class="financial-review__workspace card" aria-labelledby="review-queue-title">
+    <header class="financial-review__header">
+      <div>
+        <p class="financial-review__eyebrow">Registros autorizados</p>
+        <h2 id="review-queue-title">Fila de revisão</h2>
+        <p>Organize os dados por empresa, documento, competência, status e origem no XLSX.</p>
+      </div>
+      <button class="button-small" type="button" data-review-refresh>
+        Atualizar fila
+      </button>
+    </header>
+
+    <nav class="financial-review__tabs" aria-label="Status da revisão">
+      <button type="button" data-review-status="pending_review" aria-pressed="true">
+        Pendentes <span data-review-count="pending_review">--</span>
+      </button>
+      <button type="button" data-review-status="approved" aria-pressed="false">
+        Aprovados <span data-review-count="approved">--</span>
+      </button>
+      <button type="button" data-review-status="rejected" aria-pressed="false">
+        Rejeitados <span data-review-count="rejected">--</span>
+      </button>
+    </nav>
+
+    <section class="financial-review__filters" aria-labelledby="review-filters-title">
+      <div class="financial-review__filters-heading">
+        <div>
+          <h3 id="review-filters-title">Filtros da página carregada</h3>
+          <p>As opções abaixo vêm somente dos registros já autorizados pela RPC.</p>
+        </div>
+        <button class="button-small" type="button" data-review-clear-filters hidden>
+          Limpar filtros
+        </button>
+      </div>
+
+      <div class="financial-review__filter-grid">
+        <label>
+          <span>Empresa</span>
+          <select data-review-company>
+            <option value="">Todas nesta página</option>
+          </select>
+        </label>
+        <label>
+          <span>Documento</span>
+          <input type="search" placeholder="Buscar pelo nome" autocomplete="off" data-review-document />
+        </label>
+        <label>
+          <span>Competência</span>
+          <select data-review-period>
+            <option value="">Todas nesta página</option>
+          </select>
+        </label>
+        <label>
+          <span>Origem no XLSX</span>
+          <select data-review-origin>
+            <option value="">Todas as abas</option>
+          </select>
+        </label>
+      </div>
+    </section>
+
+    <div class="financial-review__status" data-review-status-message aria-live="polite">
+      <span class="financial-review__loader" aria-hidden="true"></span>
+      <p data-review-status-text>Carregando registros autorizados...</p>
+      <button class="button-small" type="button" data-review-status-retry hidden>Tentar novamente</button>
+    </div>
+
+    <div class="financial-review__table" data-review-table hidden>
+      <table aria-describedby="review-page-summary">
+        <thead>
+          <tr>
+            <th scope="col">Empresa e competência</th>
+            <th scope="col">Documento e origem</th>
+            <th scope="col">Métrica e valor</th>
+            <th scope="col">Validações</th>
+            <th scope="col">Status</th>
+            <th scope="col">Ações</th>
+          </tr>
+        </thead>
+        <tbody data-review-table-body></tbody>
+      </table>
+    </div>
+
+    <div class="financial-review__cards" data-review-cards hidden></div>
+
+    <div class="financial-review__empty" data-review-empty hidden>
+      <h3>Nenhum registro encontrado</h3>
+      <p data-review-empty-message>Não há itens neste status.</p>
+      <button class="button-small" type="button" data-review-empty-clear hidden>
+        Limpar filtros da página
+      </button>
+    </div>
+
+    <footer class="financial-review__pagination" aria-label="Paginação da fila" hidden>
+      <div>
+        <p id="review-page-summary" data-review-page-summary></p>
+        <small>Os filtros atuam somente sobre esta página autorizada.</small>
+      </div>
+      <div class="financial-review__pagination-actions">
+        <button class="button-small" type="button" data-review-previous>Anterior</button>
+        <button class="button-small" type="button" data-review-next>Próxima</button>
+      </div>
+    </footer>
+  </section>
+
+  <details class="financial-review__contract card">
+    <summary>Como o contrato XLSX aparecerá aqui</summary>
+    <div>
+      <p><strong>Exemplo sintético — não representa dados financeiros reais.</strong></p>
+      <dl>
+        <div><dt>Documento</dt><dd>TESTE_relatorio_sintetico.xlsx</dd></div>
+        <div><dt>Evidência</dt><dd>Resumo · célula K85</dd></div>
+        <div><dt>Aviso</dt><dd>company_context_unverified</dd></div>
+        <div><dt>Publicação</dt><dd>Bloqueada para revisão</dd></div>
+      </dl>
+      <p>
+        A RPC atual ainda não entrega warnings, endereço de célula, fórmula, chave lógica
+        ou versão do schema. A interface não inventa esses campos para registros reais.
+      </p>
+    </div>
+  </details>
+
+  <dialog class="financial-review-dialog" data-review-details-dialog aria-labelledby="review-details-title">
+    <header>
+      <div>
+        <p class="financial-review__eyebrow">Rastreabilidade do registro</p>
+        <h2 id="review-details-title" data-review-details-title>Detalhes do registro</h2>
+      </div>
+      <button type="button" class="financial-review-dialog__close" data-review-details-close aria-label="Fechar detalhes">×</button>
+    </header>
+    <div class="financial-review-dialog__body">
+      <section aria-labelledby="review-summary-title">
+        <h3 id="review-summary-title">Resumo</h3>
+        <dl class="financial-review-details" data-review-details></dl>
+      </section>
+
+      <section aria-labelledby="review-trace-title">
+        <h3 id="review-trace-title">Origem e rastreabilidade</h3>
+        <dl class="financial-review-details" data-review-trace></dl>
+      </section>
+
+      <section class="financial-review-validation" aria-labelledby="review-validation-title">
+        <h3 id="review-validation-title">Validações disponíveis</h3>
+        <ul data-review-validations></ul>
+        <p data-review-warnings-status>
+          Avisos de extração não estão disponíveis no retorno atual da RPC.
+        </p>
+      </section>
+
+      <section class="financial-review-history" aria-labelledby="review-history-title">
+        <h3 id="review-history-title">Histórico de auditoria</h3>
+        <p data-review-history-status aria-live="polite">Carregando histórico...</p>
+        <ol data-review-history></ol>
+      </section>
+
+      <aside class="financial-review__decision-lock">
+        <strong>Decisões bloqueadas</strong>
+        <p>A listagem não comprova a capacidade de decidir ou classificar este registro.</p>
+      </aside>
+    </div>
+  </dialog>
+</section>

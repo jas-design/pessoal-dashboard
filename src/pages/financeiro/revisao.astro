@@ -1,0 +1,22 @@
+---
+import FinancialReviewQueue from "../../components/financial/FinancialReviewQueue.astro";
+import DashboardLayout from "../../layouts/DashboardLayout.astro";
+import "../../styles/pages/financial-review.scss";
+---
+
+<DashboardLayout
+  title="Revisão de dados"
+  subtitle="Confira origem, rastreabilidade e validações antes de qualquer consolidação."
+>
+  <FinancialReviewQueue />
+</DashboardLayout>
+
+<script>
+  import { loadFinancialReviewPage } from "../../scripts/financial/review-page";
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", loadFinancialReviewPage, { once: true });
+  } else {
+    loadFinancialReviewPage();
+  }
+</script>

@@ -30,6 +30,24 @@
   select {
     height: 44px;
   }
+
+  small {
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+  }
+
+  small[data-tone="error"] {
+    color: var(--danger, #dc2626);
+  }
+}
+
+.financeiro-data-status {
+  margin: calc(var(--space-lg) * -1) 0 0;
+  padding: var(--space-md);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  background: var(--surface-card);
+  color: var(--text-secondary);
 }
 
 // The shared period selector remains compact in the header; this variant exposes

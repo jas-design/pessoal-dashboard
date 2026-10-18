@@ -48,8 +48,15 @@ supabase/.env.*
 backups/
 dumps/
 
+# private financial mapping and parser instructions
+docs/financial/06_KAWANA_MAPEAMENTO_RELATORIO_GERENCIAL.md
+docs/financial/06_KAWANA_PROMPT_CODEX_PARSER_EXCEL_REAL.md
+
 # macOS-specific files
 .DS_Store
 
 # jetbrains setting folder
 .idea/
+
+# .local
+.local/
