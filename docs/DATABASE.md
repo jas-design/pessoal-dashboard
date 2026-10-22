@@ -103,6 +103,15 @@ Usuários podem visualizar e atualizar o próprio perfil.
 
 Administradores possuem permissões adicionais através de `is_admin()`.
 
+Contrato de segurança proposto na Etapa 07C.11A, ainda não aplicado:
+
+- papéis globais: `admin` e `user`;
+- `role` deve ser informado explicitamente, sem default;
+- `user` não recebe privilégios globais e depende de `user_permissions`;
+- `owner`, `admin`, `reviewer` e `viewer` empresariais não pertencem a
+  `profiles.role`; eles derivam de `companies.owner_id` e `company_members`;
+- o navegador pode atualizar apenas `full_name` e `avatar_url`, sob RLS.
+
 ---
 
 ## user_permissions
@@ -161,6 +170,10 @@ IMPORTANTE:
 
 `dashboard_metrics` NÃO é a fonte da verdade para o histórico financeiro
 mensal.
+
+A Etapa 07C.11B remove a leitura anônima desta tabela. O consumidor legado em
+`src/services/dashboard/metrics.ts` não está importado pelo dashboard atual;
+qualquer uso futuro deve exigir sessão autenticada e RLS.
 
 Não utilizar esta tabela para armazenar:
 
@@ -764,6 +777,10 @@ O banco atualmente também possui:
 - `webhooks`
 - `user_preferences`
 
+`dashboard_widgets` e `system_health` não possuem consumidor versionado atual
+e não exigem leitura anônima. Novos objetos em `public` devem receber grants
+explícitos; não depender de default privileges para anon ou authenticated.
+
 Antes de alterar qualquer uma dessas tabelas:
 
 1. verificar schema real;
@@ -849,6 +866,26 @@ Regras:
 - verificar rollback quando aplicável;
 - não excluir coluna sem verificar uso;
 - não criar tabela duplicada sem verificar schema atual.
+
+## 20.1 Grants de funções novas
+
+A partir da Etapa 07C.12F.2, funções criadas pelo papel `postgres` não recebem
+mais `EXECUTE` de `PUBLIC` por default, em nenhum schema. Toda função nova deve
+declarar sua ACL na mesma migration que a cria:
+
+- helpers e RPCs usados pelo dashboard: revogar `PUBLIC`/`anon` e conceder
+  `EXECUTE` explicitamente a `authenticated` e, quando necessário,
+  `service_role`;
+- RPCs de ingestão/extração: conceder somente a `service_role`;
+- implementações em schemas privados: não conceder execução direta a papéis
+  de API; expor apenas wrappers públicos endurecidos quando necessário.
+
+A mudança afeta somente funções futuras cujo owner efetivo seja `postgres`.
+Ela não altera ACLs de funções existentes nem default privileges de
+`supabase_admin`. Uma reversão restauraria o comportamento amplo com
+`ALTER DEFAULT PRIVILEGES FOR ROLE postgres GRANT EXECUTE ON FUNCTIONS TO
+PUBLIC`, mas isso não deve ser executado diretamente: se indispensável, deve
+ser uma nova migration forward-only, precedida de revisão de segurança.
 
 Estrutura futura recomendada:
 

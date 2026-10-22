@@ -69,8 +69,8 @@ begin
         v_entry.public_signature;
     end if;
 
-    if v_runtime_settings is not null then
-      raise exception 'Preflight failed: wrapper % has runtime settings that require explicit review',
+    if v_runtime_settings is distinct from array['search_path=""']::text[] then
+      raise exception 'Preflight failed: wrapper % must have only an empty search_path',
         v_entry.public_signature;
     end if;
 
@@ -115,25 +115,20 @@ alter function public.finance_review_set_document_role(uuid,text,text)
 alter function public.finance_review_set_document_role(uuid,text,text)
   set search_path = '';
 
+-- Preserve the confirmed remote posture: no client role, including
+-- service_role, receives direct access to the private implementations.
+-- Any approved service_role integration must use a public wrapper; the
+-- implementation still rejects calls without auth.uid().
 revoke all on function financial_private.finance_review_list_impl(text,integer,integer)
-  from public, anon, authenticated;
+  from public, anon, authenticated, service_role;
 revoke all on function financial_private.finance_review_history_impl(uuid,integer)
-  from public, anon, authenticated;
+  from public, anon, authenticated, service_role;
 revoke all on function financial_private.finance_review_decide_impl(uuid,text,text,integer)
-  from public, anon, authenticated;
+  from public, anon, authenticated, service_role;
 revoke all on function financial_private.finance_review_set_document_role_impl(uuid,text,text)
-  from public, anon, authenticated;
+  from public, anon, authenticated, service_role;
 
-revoke usage on schema financial_private from public, anon, authenticated;
-
-grant usage on schema financial_private to service_role;
-grant execute on function financial_private.finance_review_list_impl(text,integer,integer)
-  to service_role;
-grant execute on function financial_private.finance_review_history_impl(uuid,integer)
-  to service_role;
-grant execute on function financial_private.finance_review_decide_impl(uuid,text,text,integer)
-  to service_role;
-grant execute on function financial_private.finance_review_set_document_role_impl(uuid,text,text)
-  to service_role;
+revoke usage on schema financial_private
+  from public, anon, authenticated, service_role;
 
 commit;

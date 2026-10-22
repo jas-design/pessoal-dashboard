@@ -97,7 +97,11 @@ Não usar retry genérico do nó para todos os códigos. Um timeout do cliente p
 
 ## Memória, payload, timeout e duplicação
 
-- O limite de upload é 25 MiB comprimidos, mas um XLSX pode expandir muito mais em memória.
+- O worker aceita até 25 MiB comprimidos, mas a RPC real
+  `finance_claim_next_document` seleciona somente arquivos de até 8 MiB. Se o
+  workflow 04 usa essa RPC, 8 MiB é o limite efetivo do fluxo automatizado até
+  que banco, worker, recursos da VPS e política operacional sejam alinhados.
+  Não aumentar o claim isoladamente: um XLSX pode expandir muito mais em memória.
 - n8n pode manter uma cópia do binário, o processo principal do worker recebe o corpo em memória e o subprocesso do parser usa heap de até 256 MiB. O limite de 384 MiB do container cobre o conjunto e pode causar OOM em arquivos extremos.
 - `/tmp` tem 64 MiB; comporta um arquivo no limite com folga restrita, não múltiplos jobs. A concorrência permanece em 1.
 - Antes do piloto, confirmar o modo de armazenamento binário e a retenção das execuções do n8n. Não mudar essas opções nesta etapa.

@@ -13,6 +13,20 @@ begin
     raise exception 'Preflight failed: public.company_members already exists';
   end if;
   if not exists (
+    select 1
+    from pg_catalog.pg_proc p
+    join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+    where p.oid = to_regprocedure('public.is_admin()')
+      and n.nspname = 'public'
+      and p.prosecdef
+      and p.prorettype = 'boolean'::regtype
+      and pg_catalog.pg_get_userbyid(p.proowner)
+        not in ('anon', 'authenticated', 'service_role')
+  ) then
+    raise exception 'Preflight failed: trusted public.is_admin() contract not found';
+  end if;
+
+  if not exists (
     select 1 from information_schema.columns
     where table_schema = 'public' and table_name = 'companies'
       and column_name = 'id' and udt_name = 'uuid'
@@ -193,7 +207,10 @@ begin
 end;
 $block$;
 
-revoke select on table public.companies from anon;
+-- The real inventory shows broad DML grants even though current RLS blocks
+-- them. Remove only the four inventoried privileges and preserve service_role.
+revoke select, insert, update, delete on table public.companies from anon;
+revoke insert, update, delete on table public.companies from authenticated;
 grant select on table public.companies to authenticated;
 
 create policy "Company owners and members can view companies"
@@ -202,6 +219,7 @@ for select
 to authenticated
 using (
   public.company_can_view_financial_review(id)
+  or public.is_admin()
 );
 
 commit;

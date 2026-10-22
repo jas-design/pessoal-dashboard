@@ -16,6 +16,7 @@ begin
     ('companies', 'is_active'),
     ('documents', 'id'),
     ('documents', 'owner_id'),
+    ('documents', 'company_id'),
     ('documents', 'source_etag'),
     ('documents', 'file_name'),
     ('documents', 'is_deleted'),
@@ -116,12 +117,10 @@ begin
    and c.owner_id = f.owner_id
   where d.owner_id = f.owner_id
     and (
-      (
-        f.company_id is null
-        and f.owner_id = v_actor
-      )
+      f.owner_id = v_actor
       or (
         f.company_id is not null
+        and d.company_id = f.company_id
         and c.id is not null
         and public.company_can_view_financial_review(f.company_id)
       )
@@ -144,9 +143,14 @@ begin
         and not d.is_deleted
         and d.source_etag is not distinct from f.source_etag
         and (
-          (f.company_id is null and f.owner_id = v_actor)
+          (
+            f.company_id is null
+            and d.company_id is null
+            and f.owner_id = v_actor
+          )
           or (
             f.company_id is not null
+            and d.company_id = f.company_id
             and public.company_can_decide_financial_review(f.company_id)
           )
         )
@@ -160,10 +164,18 @@ begin
             and approved_row.owner_id = d.owner_id
             and approved_row.review_status = 'approved'
         )
+        and not exists (
+          select 1
+          from public.financial_extracted_rows mismatched_row
+          where mismatched_row.document_id = d.id
+            and mismatched_row.owner_id = d.owner_id
+            and mismatched_row.company_id is distinct from d.company_id
+        )
         and (
           d.owner_id = v_actor
           or (
             f.company_id is not null
+            and d.company_id = f.company_id
             and public.company_can_classify_financial_source(f.company_id)
             and 1 = (
               select count(distinct document_row.company_id)
@@ -185,12 +197,10 @@ begin
      and p.owner_id = f.owner_id
     where d.owner_id = f.owner_id
       and (
-        (
-          f.company_id is null
-          and f.owner_id = v_actor
-        )
+        f.owner_id = v_actor
         or (
           f.company_id is not null
+          and d.company_id = f.company_id
           and c.id is not null
           and public.company_can_view_financial_review(f.company_id)
         )
@@ -237,6 +247,8 @@ begin
   if not found then raise exception 'Linha nao encontrada'; end if;
 
   if v_row.company_id is null then
+    if v_row.owner_id <> v_actor then raise exception 'Linha nao encontrada'; end if;
+  elsif v_doc.company_id is distinct from v_row.company_id then
     if v_row.owner_id <> v_actor then raise exception 'Linha nao encontrada'; end if;
   else
     select * into v_company
@@ -324,6 +336,12 @@ begin
   for share;
 
   if not found or v_doc.is_deleted then raise exception 'Documento indisponivel'; end if;
+  if v_doc.company_id is distinct from v_row.company_id then
+    if v_row.owner_id <> v_actor then
+      raise exception 'Linha inexistente ou nao autorizada';
+    end if;
+    raise exception 'Empresa do documento diverge da linha extraida';
+  end if;
   if v_doc.source_etag is distinct from v_row.source_etag then
     raise exception 'Versao do arquivo mudou: reextrair antes da revisao';
   end if;
@@ -418,8 +436,20 @@ begin
     and f.owner_id = v_doc.owner_id
     and f.company_id is not null;
 
+  if exists (
+    select 1
+    from public.financial_extracted_rows f
+    where f.document_id = p_document_id
+      and f.owner_id = v_doc.owner_id
+      and f.company_id is distinct from v_doc.company_id
+  ) then
+    raise exception 'Empresa do documento diverge das linhas extraidas';
+  end if;
+
   if v_actor <> v_doc.owner_id then
-    if v_company_count <> 1
+    if v_doc.company_id is null
+      or v_company_count <> 1
+      or v_company_id is distinct from v_doc.company_id
       or not public.company_can_classify_financial_source(v_company_id)
     then
       raise exception 'Documento nao encontrado ou nao autorizado';
@@ -493,15 +523,17 @@ revoke all on function financial_private.finance_review_history_impl(uuid,intege
 revoke all on function financial_private.finance_review_set_document_role_impl(uuid,text,text)
   from public, anon;
 
--- Temporary compatibility grants. The next versioned migration converts the
--- public wrappers to SECURITY DEFINER before removing this direct access.
+-- Temporary compatibility grant for authenticated. The next versioned
+-- migration converts the public wrappers to SECURITY DEFINER before removing
+-- this direct access. service_role remains without direct private access,
+-- matching the confirmed remote posture.
 grant execute on function financial_private.finance_review_list_impl(text,integer,integer)
-  to authenticated, service_role;
+  to authenticated;
 grant execute on function financial_private.finance_review_decide_impl(uuid,text,text,integer)
-  to authenticated, service_role;
+  to authenticated;
 grant execute on function financial_private.finance_review_history_impl(uuid,integer)
-  to authenticated, service_role;
+  to authenticated;
 grant execute on function financial_private.finance_review_set_document_role_impl(uuid,text,text)
-  to authenticated, service_role;
+  to authenticated;
 
 commit;

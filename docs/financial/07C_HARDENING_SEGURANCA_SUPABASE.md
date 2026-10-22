@@ -19,12 +19,14 @@ terceiro converte os wrappers públicos para `SECURITY DEFINER` com
 `search_path` vazio antes de retirar o acesso direto de `authenticated` ao
 schema privado.
 
-## Baseline: parte bloqueada
+## Baseline: funções comprovadas, restante bloqueado
 
-Não foi criada uma baseline dos objetos financeiros preexistentes. Os resultados
-07B fornecidos confirmam existência e riscos, mas o repositório ainda não contém
-as definições reais completas de tabelas, índices, constraints, triggers,
-policies, owners, ACLs e corpos originais das oito funções.
+A Etapa 07C.2 adicionou
+`scripts/supabase/baselines/07c2-current-financial-review-functions.sql` com as
+oito definições reais, owners e ACLs comprovados pelos CSVs locais. Esse snapshot
+não é migration e não constitui baseline completa do banco. Ainda faltam as
+definições reais completas de tabelas, índices, policies, owners e ACLs dos
+schemas.
 
 Inventar esse DDL tornaria o histórico aparentemente reproduzível, mas incorreto.
 O script `scripts/supabase/07c-financial-hardening-preflight.sql` contém as
@@ -37,8 +39,8 @@ seções:
 - `review_function_definitions`;
 - `data_readiness_counts` e `migration_history`.
 
-Somente depois dessas definições serem revisadas será seguro criar a baseline e
-um rollback completo dos corpos antigos das RPCs.
+Somente depois das definições pendentes serem revisadas será seguro completar a
+baseline e o rollback de toda a camada de acesso.
 
 ## Modelo de autorização
 
@@ -74,17 +76,22 @@ A interface continua sem chamar decisão ou classificação até uma etapa próp
 validar o contrato e os motivos de bloqueio.
 
 As telas Financeiro e Configurações consultam `companies` diretamente. Após o
-hardening, elas verão apenas empresas possuídas ou vinculadas. Usuários não
-owners que hoje dependem da policy `USING (true)` perderão visibilidade até que
-um owner crie o vínculo explicitamente; não haverá backfill automático.
+hardening, usuários comuns verão apenas empresas possuídas ou vinculadas;
+administradores globais ativos preservam a visibilidade administrativa de
+metadados por `is_admin()`. Essa visibilidade não concede acesso às RPCs de
+revisão financeira, que continuam exigindo owner ou vínculo empresarial.
+Não haverá backfill automático de vínculos.
 
 ### n8n
 
-`service_role` mantém acesso ao schema e às implementações privadas. Os wrappers
-públicos mantêm nomes, argumentos e retorno. Ainda é obrigatório confirmar se o
-workflow 04 usa `service_role`/wrappers ou se opera como `authenticated` e chama
-`financial_private` diretamente. Essa informação não está no repositório e não
-pode ser inferida do catálogo do banco.
+`service_role` não recebe acesso direto ao schema ou às implementações privadas;
+o inventário real confirma que ele já não possui esse acesso. Após o hardening,
+chamadas autorizadas devem passar pelos wrappers públicos, que mantêm nomes,
+argumentos e retorno. Como as implementações exigem `auth.uid()`, uma service
+key sem contexto de usuário não consegue usar essas RPCs apenas por possuir o
+papel `service_role`. Ainda é obrigatório confirmar o papel e as chamadas reais
+do workflow 04. Essa informação não está no repositório e não pode ser inferida
+dos quatro CSVs disponíveis.
 
 `financial_transactions` foi deliberadamente excluída da alteração: suas
 policies e consumidores reais ainda precisam ser capturados. A migration não
@@ -116,9 +123,9 @@ substitui uma policy desconhecida.
    backend ainda permite somente rejeição; aprovação continua validada pela RPC.
 6. O rollback de acesso restaura a exposição anterior e, portanto, reduz a
    segurança. É apenas uma medida emergencial aprovada.
-7. Sem os corpos antigos das RPCs, o rollback não consegue restaurar uma versão
-   anterior das implementações; por isso a baseline continua bloqueadora para
-   implantação em produção.
+7. Os corpos antigos das RPCs já estão preservados, mas o rollback de tabelas,
+   policies e ACLs de schema continua incompleto; a baseline completa permanece
+   bloqueadora para produção.
 
 ## Sequência segura de implantação
 
@@ -162,19 +169,23 @@ acesso privado necessário e só depois retorna os wrappers a `SECURITY INVOKER`
 Também restaura semanticamente a policy ampla de `companies`. Ele não remove
 `company_members`, vínculos ou auditoria.
 
-O rollback integral das implementações privadas permanece bloqueado até os
-corpos reais anteriores serem arquivados. Não aplicar em produção enquanto essa
-lacuna existir.
+O snapshot das oito funções pode restaurar seus corpos e ACLs comprovados, mas
+também restaura exposições legadas, inclusive `anon` nos wrappers. Não aplicar
+em produção enquanto o restante da camada de acesso não tiver baseline e teste
+de rollback em staging.
 
 ## Aprovações e informações ainda necessárias
 
-1. Saída integral do preflight 07C, especialmente definições das funções e ACLs.
-2. Confirmação de que o owner técnico das funções/schema é confiável e comum.
-3. Confirmação de que os wrappers apenas delegam para as quatro implementações.
-4. Papel e chamadas reais usados pelo workflow 04.
+1. Export/configuração sanitizada do workflow 04 e papel efetivo das chamadas.
+2. Transformação real entre `financial-extraction.v1` e
+   `finance_complete_document`.
+3. Destino aprovado para evidências XLSX que não cabem no domínio limitado a
+   receita/despesa.
+4. Aprovação da regra que elimina inferência automática de empresa por nome e
+   torna snapshots do mesmo ETag imutáveis.
 5. Lista de usuários que deverão receber vínculo, definida pelos owners; nenhuma
    atribuição será feita automaticamente.
 6. Aprovação da semântica: reviewer decide, viewer só lê e admin global não tem
    bypass.
 7. Aprovação do rollback emergencial que reabre temporariamente o acesso antigo.
-8. Aprovação separada para criar a baseline e, depois, aplicar migrations.
+8. Aprovação separada para completar a baseline e, depois, testar migrations.
