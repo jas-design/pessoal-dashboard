@@ -1,5 +1,9 @@
 import { formatMonthYear } from "./period-format";
 import {
+  financialMetricCards,
+  type FinancialMetricCardDefinition,
+} from "./dashboard-metric-cards";
+import {
   getMonthlyFinancialSummary,
   type MonthlyFinancialSummary,
 } from "./monthly-summary";
@@ -11,52 +15,18 @@ import {
   type FinancialPeriod,
   type MonthlyFinancialMetrics,
 } from "./monthly-metrics";
+import {
+  getFinancialDataMessage,
+  getFinancialValueStatus,
+  resolveFinancialOverview,
+} from "./financial-calculations";
 
 type MetricKey = "revenue" | "net_profit" | "net_margin" | "cash_balance";
 type MetricUnit = "currency" | "percentage";
 type MetricTone = "positive" | "negative" | "neutral";
 type CashFlowKey = "cash_inflows" | "cash_outflows" | "cash_balance";
 
-export const financialMetricCards = [
-  {
-    key: "revenue",
-    label: "FATURAMENTO (MÊS)",
-    icon: "currency",
-    unit: "currency",
-    accent: "#22c55e",
-    accentSoft: "rgba(34, 197, 94, 0.14)",
-    accentGlow: "rgba(34, 197, 94, 0.2)",
-  },
-  {
-    key: "net_profit",
-    label: "LUCRO LÍQUIDO (MÊS)",
-    icon: "chart",
-    unit: "currency",
-    accent: "#2563eb",
-    accentSoft: "rgba(37, 99, 235, 0.14)",
-    accentGlow: "rgba(37, 99, 235, 0.2)",
-  },
-  {
-    key: "net_margin",
-    label: "MARGEM LÍQUIDA",
-    icon: "percent",
-    unit: "percentage",
-    accent: "#7c3aed",
-    accentSoft: "rgba(124, 58, 237, 0.14)",
-    accentGlow: "rgba(124, 58, 237, 0.2)",
-  },
-  {
-    key: "cash_balance",
-    label: "SALDO EM CAIXA",
-    icon: "wallet",
-    unit: "currency",
-    accent: "#f97316",
-    accentSoft: "rgba(249, 115, 22, 0.14)",
-    accentGlow: "rgba(249, 115, 22, 0.2)",
-  },
-] as const;
-
-type FinancialMetricCardDefinition = (typeof financialMetricCards)[number];
+export { financialMetricCards } from "./dashboard-metric-cards";
 
 function readPeriodFromUrl(): FinancialPeriod | null {
   const params = new URLSearchParams(window.location.search);
@@ -74,8 +44,26 @@ function readPeriodFromUrl(): FinancialPeriod | null {
   return { year, month };
 }
 
+function readSelectedCompany() {
+  return new URLSearchParams(window.location.search).get("company") || undefined;
+}
+
+function updateDashboardStatus(metrics: MonthlyFinancialMetrics | null) {
+  const status = document.querySelector<HTMLElement>("[data-dashboard-financial-status]");
+
+  if (status) {
+    status.textContent = getFinancialDataMessage(metrics);
+    status.dataset.state = metrics?.data_state ?? "missing";
+  }
+}
+
 function resolveSelectedPeriod(periods: FinancialPeriod[]) {
-  return readPeriodFromUrl() ?? periods[0] ?? null;
+  const now = new Date();
+
+  return readPeriodFromUrl() ?? periods[0] ?? {
+    year: now.getFullYear(),
+    month: now.getMonth() + 1,
+  };
 }
 
 function isRealNumber(value: number | null): value is number {
@@ -209,6 +197,7 @@ function updateMetricCard(
 
   const value = metrics[definition.key as MetricKey];
   const valueElement = card.querySelector("[data-financial-metric-value]");
+  const statusElement = card.querySelector("[data-financial-metric-status]");
   const variationElement = card.querySelector("[data-financial-metric-variation]");
   const sparklineArea = card.querySelector("[data-financial-metric-sparkline-area]");
   const sparklineLine = card.querySelector("[data-financial-metric-sparkline-line]");
@@ -220,6 +209,13 @@ function updateMetricCard(
 
   if (valueElement) {
     valueElement.textContent = formatMetricValue(value, definition.unit);
+  }
+
+  if (statusElement) {
+    statusElement.textContent = getFinancialValueStatus(metrics, value);
+    if (statusElement instanceof HTMLElement) {
+      statusElement.dataset.state = metrics.data_state;
+    }
   }
 
   if (variationElement instanceof HTMLElement) {
@@ -273,15 +269,15 @@ function updateCashFlowChart(history: MonthlyFinancialMetrics[]) {
 }
 
 function updateMonthlyFinancialSummary(metrics: MonthlyFinancialMetrics | null) {
+  const overview = resolveFinancialOverview(metrics);
+
   window.dispatchEvent(
     new CustomEvent("monthly-financial-summary-data", {
       detail: metrics
         ? {
-            net_revenue: metrics.net_revenue,
-            costs: metrics.costs,
-            operating_expenses: metrics.operating_expenses,
-            financial_expenses: metrics.financial_expenses,
-            net_profit: metrics.net_profit,
+            revenue: overview.revenue,
+            expenses: overview.expenses,
+            net_profit: overview.netProfit,
           }
         : null,
     })
@@ -313,29 +309,35 @@ function clearFinancialDashboard(summary: MonthlyFinancialSummary | null = null)
 
 export async function loadFinancialDashboard() {
   try {
-    const periods = await getAvailableFinancialPeriods();
+    const companyId = readSelectedCompany();
+    const periods = await getAvailableFinancialPeriods(companyId);
     const selectedPeriod = resolveSelectedPeriod(periods);
 
     if (!selectedPeriod) {
       renderMetricsEmptyState("Sem dados");
+      updateDashboardStatus(null);
       clearFinancialDashboard();
       return;
     }
 
     const [metrics, previousMetrics, history, summary] = await Promise.all([
-      getMonthlyFinancialMetrics(selectedPeriod.year, selectedPeriod.month),
-      getPreviousMonthFinancialMetrics(selectedPeriod.year, selectedPeriod.month),
-      getFinancialMetricHistory(selectedPeriod.year, selectedPeriod.month, 6),
-      getMonthlyFinancialSummary(selectedPeriod.year, selectedPeriod.month),
+      getMonthlyFinancialMetrics(selectedPeriod.year, selectedPeriod.month, companyId),
+      getPreviousMonthFinancialMetrics(selectedPeriod.year, selectedPeriod.month, companyId),
+      getFinancialMetricHistory(selectedPeriod.year, selectedPeriod.month, 6, companyId),
+      companyId
+        ? Promise.resolve(null)
+        : getMonthlyFinancialSummary(selectedPeriod.year, selectedPeriod.month),
     ]);
 
     if (!metrics) {
       renderMetricsEmptyState("Sem dados");
+      updateDashboardStatus(null);
       clearFinancialDashboard(summary);
       return;
     }
 
     updateMetricCards(metrics, previousMetrics, history);
+    updateDashboardStatus(metrics);
     updateCashFlowChart(history);
     updateMonthlyFinancialSummary(metrics);
     updateFinancialSummarySections(summary);
@@ -344,6 +346,7 @@ export async function loadFinancialDashboard() {
       "Erro ao buscar métricas:",
       error instanceof Error ? error.message : error
     );
+    updateDashboardStatus(null);
     renderMetricsEmptyState("Não foi possível carregar as métricas.");
     clearFinancialDashboard();
   }

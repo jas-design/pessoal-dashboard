@@ -1,4 +1,10 @@
 ---
+import type { AutomationDailyStat } from "../../types/dashboard";
+
+interface Props {
+  stats?: AutomationDailyStat[];
+}
+
 const { stats = [] } = Astro.props;
 
 const labels = stats.map((item) =>
@@ -35,7 +41,7 @@ const totalData = stats.map((item) => item.total_count);
 <script>
   import ApexCharts from "apexcharts";
 
-  const chartElement = document.querySelector("#automation-chart");
+  const chartElement = document.querySelector<HTMLElement>("#automation-chart");
 
   function getCssVar(name: string) {
     return getComputedStyle(document.documentElement).getPropertyValue(name).trim();

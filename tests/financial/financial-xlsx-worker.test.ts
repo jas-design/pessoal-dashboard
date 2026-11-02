@@ -86,7 +86,7 @@ async function postWorkbook(baseUrl: string, binary: Buffer, headers = requestHe
   return fetch(`${baseUrl}/v1/extractions/xlsx`, {
     method: "POST",
     headers,
-    body: binary,
+    body: Uint8Array.from(binary),
   });
 }
 
@@ -242,7 +242,8 @@ test("subprocesso conclui o envio de uma resposta maior antes de desconectar o I
 const realWorkbookPath = resolve(".local/kawana/09.2026 Relatório Gerencial Kawana.xlsx");
 
 test("worker processa o XLSX real por HTTP sem persistência", {
-  skip: !existsSync(realWorkbookPath),
+  skip: process.env.RUN_REAL_FINANCIAL_FIXTURE_TESTS !== "1"
+    || !existsSync(realWorkbookPath),
 }, async () => {
   const worker = await startWorker({ timeoutMs: 30_000 });
   try {

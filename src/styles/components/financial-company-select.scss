@@ -1,0 +1,44 @@
+.financial-company-select {
+  width: min(320px, 100%);
+  display: grid;
+  gap: var(--space-sm);
+
+  > span {
+    color: var(--text-muted);
+    font-size: var(--font-small);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  select {
+    min-height: 44px;
+    padding: 0 var(--space-md);
+    border: 1px solid var(--input-border);
+    border-radius: var(--radius-control);
+    background: var(--input-background);
+    color: var(--text-primary);
+    font: inherit;
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.75;
+    }
+  }
+
+  small {
+    min-height: 1.25em;
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+  }
+
+  small[data-tone="error"] {
+    color: var(--color-danger);
+  }
+}
+
+html[data-theme="dark"] .financial-company-select select {
+  color-scheme: dark;
+}
+
+html[data-theme="light"] .financial-company-select select {
+  color-scheme: light;
+}

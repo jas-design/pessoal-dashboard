@@ -111,43 +111,6 @@
     border-top: 1px solid rgba(255, 255, 255, 0.08);
   }
 
-  &__status {
-    margin-bottom: 18px;
-  }
-
-  &__status-header,
-  &__usage {
-    display: flex;
-    justify-content: space-between;
-    color: var(--sidebar-text-muted);
-    font-size: 12px;
-  }
-
-  &__status-header strong {
-    background: var(--sidebar-surface);
-    color: var(--sidebar-text);
-    padding: 6px 10px;
-    border-radius: 999px;
-    font-size: 11px;
-  }
-
-  &__usage {
-    margin: 12px 0 8px;
-  }
-
-  &__progress {
-    height: 4px;
-    background: var(--sidebar-surface);
-    border-radius: 999px;
-    overflow: hidden;
-
-    div {
-      height: 100%;
-      background: var(--green);
-      border-radius: inherit;
-    }
-  }
-
   &__user {
     padding: 12px;
     background: rgba(255, 255, 255, 0.06);
@@ -157,10 +120,17 @@
     align-items: center;
     gap: 10px;
 
+    > div:last-child {
+      min-width: 0;
+    }
+
     strong {
       display: block;
       font-size: 14px;
       color: var(--sidebar-text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     span {

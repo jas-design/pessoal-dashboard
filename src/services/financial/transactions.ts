@@ -159,13 +159,16 @@ export async function getTransactions(
     query = query.eq("category", filters.category);
   }
 
-  const { data, error } = await query;
+  const { data, error } = await query.overrideTypes<
+    FinancialTransactionRow[],
+    { merge: false }
+  >();
 
   if (error) {
     throw new Error(`Erro ao buscar movimentacoes financeiras: ${error.message}`);
   }
 
-  return ((data ?? []) as FinancialTransactionRow[]).map(toFinancialTransaction);
+  return (data ?? []).map(toFinancialTransaction);
 }
 
 export async function getTransactionMonthlySummary(

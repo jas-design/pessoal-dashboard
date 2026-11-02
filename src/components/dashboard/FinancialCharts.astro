@@ -1,4 +1,10 @@
 ---
+import type { DashboardMetric } from "../../types/dashboard";
+
+interface Props {
+  metrics?: DashboardMetric[];
+}
+
 const { metrics = [] } = Astro.props;
 
 const metricLabels = metrics.map((metric) => metric.metric_label);
@@ -65,8 +71,8 @@ const totalValue = metricValues.reduce((sum, value) => sum + value, 0);
 <script>
   import ApexCharts from "apexcharts";
 
-  const barChartElement = document.querySelector("#financial-bar-chart");
-  const pieChartElement = document.querySelector("#financial-pie-chart");
+  const barChartElement = document.querySelector<HTMLElement>("#financial-bar-chart");
+  const pieChartElement = document.querySelector<HTMLElement>("#financial-pie-chart");
 
   function getCssVar(name: string) {
     return getComputedStyle(document.documentElement).getPropertyValue(name).trim();

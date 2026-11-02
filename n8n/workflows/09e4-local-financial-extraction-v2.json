@@ -1,0 +1,400 @@
+{
+  "name": "09E.4 - FABIO - Local Financial Extraction v2",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "09e40000-0000-4000-8000-000000000001",
+      "name": "Manual trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const expected = {\n  ownerId: '08e9abae-db9c-46b4-81be-c90bf7ea04e5',\n  companyId: '6faa0c8b-733f-4406-91c9-638a4e93ee11',\n  companyName: 'Empresa Horizonte Local',\n  documentId: '00000000-0000-4000-8000-0000000009e2',\n  fileName: 'TESTE_FINANCEIRO_09B_SINTETICO.xlsx',\n  sourceEtag: 'synthetic-local-sha256-2a5a4be80c428acf5c14c21bfc214d8020215ddbc95eb1f74c7161493de9e39a',\n  sourcePath: '/drive/root:/Deskboard KPIs/Local Synthetic/TESTE_FINANCEIRO_09B_SINTETICO.xlsx',\n  fixturePath: '/fixtures/09b-synthetic-financial-report.xlsx',\n  fileSize: 12956,\n  fixtureSha256: '2a5a4be80c428acf5c14c21bfc214d8020215ddbc95eb1f74c7161493de9e39a',\n  periodMonth: '2026-09',\n};\n\n// A future authorized operator must validate service health, both n8n credentials\n// and local-only routing before changing this explicit gate.\nconst operationalPreflightApproved = false;\n\nreturn [{ json: { localOnly: true, operationalPreflightApproved, expected } }];"
+      },
+      "id": "09e40000-0000-4000-8000-000000000002",
+      "name": "Define local-only contract",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "09e40000-0000-4000-8000-000000000101",
+              "leftValue": "={{ $json.operationalPreflightApproved }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "09e40000-0000-4000-8000-000000000003",
+      "name": "Operational preflight approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [480, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { status: 'blocked', stage: 'preflight', code: 'operational_preflight_required', localOnly: true, databaseWriteAttempted: false } }];"
+      },
+      "id": "09e40000-0000-4000-8000-000000000004",
+      "name": "Return blocked preflight result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 180]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://supabase-rpc-gateway:8080/rest/v1/rpc/finance_claim_next_document",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ p_owner_id: $('Define local-only contract').first().json.expected.ownerId, p_pilot_only: true }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 10000
+        }
+      },
+      "id": "09e40000-0000-4000-8000-000000000005",
+      "name": "Claim next pilot document",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, -80],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "SELECT_LOCAL_SUPABASE_CREDENTIAL_AFTER_IMPORT",
+          "name": "LOCAL_ONLY_SUPABASE_SERVICE_ROLE"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst expected = $('Define local-only contract').first().json.expected;\nconst statusCode = Number(response.statusCode ?? 200);\nconst body = response.body ?? response;\nconst uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;\n\nif (!Number.isInteger(statusCode) || statusCode < 200 || statusCode >= 300) {\n  return [{ json: { outcome: 'terminal', result: { status: 'failure', stage: 'claim', code: 'claim_request_failed', localOnly: true } } }];\n}\nif (body?.has_document === false && body?.reason === 'no_eligible_document') {\n  return [{ json: { outcome: 'terminal', result: { status: 'skipped', stage: 'claim', code: 'no_eligible_document', localOnly: true } } }];\n}\nif (body?.has_document !== true) {\n  return [{ json: { outcome: 'terminal', result: { status: 'failure', stage: 'claim', code: 'invalid_claim_response', localOnly: true } } }];\n}\n\nconst identityMatches = body.document_id === expected.documentId\n  && body.owner_id === expected.ownerId\n  && body.company_id === expected.companyId\n  && body.source_etag === expected.sourceEtag\n  && body.file_name === expected.fileName\n  && body.file_size === expected.fileSize\n  && body.extension === 'xlsx'\n  && uuid.test(String(body.claim_id ?? ''))\n  && typeof body.external_drive_id === 'string'\n  && body.external_drive_id.length > 0\n  && typeof body.external_file_id === 'string'\n  && body.external_file_id.length > 0;\nconst pathContractMatches = expected.sourcePath.startsWith('/drive/root:/Deskboard KPIs/')\n  && expected.sourcePath.endsWith(`/${expected.fileName}`);\n\nif (!identityMatches || !pathContractMatches) {\n  return [{ json: { outcome: 'terminal', result: { status: 'failure', stage: 'claim', code: 'claimed_document_identity_mismatch', localOnly: true } } }];\n}\n\nreturn [{ json: { outcome: 'claimed', expected, claim: body, pathEligibilityValidatedByClaimRpc: true } }];"
+      },
+      "id": "09e40000-0000-4000-8000-000000000006",
+      "name": "Validate claim response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, -80]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "09e40000-0000-4000-8000-000000000102",
+              "leftValue": "={{ $json.outcome }}",
+              "rightValue": "claimed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "09e40000-0000-4000-8000-000000000007",
+      "name": "Document claimed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1200, -80]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: $input.first().json.result }];"
+      },
+      "id": "09e40000-0000-4000-8000-000000000008",
+      "name": "Return sanitized claim result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1440, 100]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "fileSelector": "/fixtures/09b-synthetic-financial-report.xlsx",
+        "options": {}
+      },
+      "id": "09e40000-0000-4000-8000-000000000009",
+      "name": "Load approved synthetic XLSX",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [1440, -160]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst expected = item.json.expected;\nconst claim = item.json.claim;\nif (item.json.pathEligibilityValidatedByClaimRpc !== true\n  || expected.fixturePath !== '/fixtures/09b-synthetic-financial-report.xlsx'\n  || expected.fixtureSha256 !== '2a5a4be80c428acf5c14c21bfc214d8020215ddbc95eb1f74c7161493de9e39a'\n  || expected.fileSize !== 12956\n  || claim.document_id !== expected.documentId\n  || claim.company_id !== expected.companyId\n  || claim.source_etag !== expected.sourceEtag\n  || !item.binary?.data) {\n  throw new Error('synthetic_fixture_not_eligible');\n}\nreturn [item];"
+      },
+      "id": "09e40000-0000-4000-8000-000000000010",
+      "name": "Validate approved fixture",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1680, -160]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://financial-xlsx-worker:8787/v1/extractions/xlsx",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            },
+            {
+              "name": "X-Financial-Mapping-Id",
+              "value": "kawana-management-report"
+            },
+            {
+              "name": "X-Financial-Mapping-Version",
+              "value": "1"
+            },
+            {
+              "name": "X-Financial-Company-Id",
+              "value": "={{ $json.expected.companyId }}"
+            },
+            {
+              "name": "X-Financial-Company-Name",
+              "value": "={{ encodeURIComponent($json.expected.companyName) }}"
+            },
+            {
+              "name": "X-Financial-Document-Id",
+              "value": "={{ $json.expected.documentId }}"
+            },
+            {
+              "name": "X-Financial-Document-Name",
+              "value": "={{ encodeURIComponent($json.expected.fileName) }}"
+            },
+            {
+              "name": "X-Financial-Document-Etag",
+              "value": "={{ $json.expected.sourceEtag }}"
+            },
+            {
+              "name": "X-Financial-External-File-Id",
+              "value": "={{ encodeURIComponent($json.claim.external_file_id) }}"
+            },
+            {
+              "name": "X-Financial-Period-Month",
+              "value": "={{ $json.expected.periodMonth }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 40000
+        }
+      },
+      "id": "09e40000-0000-4000-8000-000000000011",
+      "name": "Invoke private XLSX worker",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1920, -160],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SELECT_LOCAL_WORKER_CREDENTIAL_AFTER_IMPORT",
+          "name": "LOCAL_ONLY_FINANCIAL_XLSX_WORKER"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst context = $('Validate approved fixture').first().json;\nconst expected = context.expected;\nconst claim = context.claim;\nconst statusCode = Number(response.statusCode ?? 200);\nconst extraction = response.body ?? response;\nconst supported = new Set(['revenue', 'expense', 'net_result', 'cash_available']);\nconst uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;\nconst terminal = (code) => [{ json: { outcome: 'terminal', result: { status: 'failure', stage: 'extraction', code, localOnly: true, documentId: expected.documentId } } }];\n\ntry {\n  if (!Number.isInteger(statusCode) || statusCode < 200 || statusCode >= 300) return terminal('worker_request_failed');\n  if (extraction?.schemaVersion !== 'financial-extraction.v1' || extraction?.status !== 'needs_review' || extraction?.publishable !== false) throw new Error('invalid_extraction_contract');\n  if (extraction.metadata?.company?.id !== expected.companyId || extraction.metadata?.company?.name !== expected.companyName || extraction.metadata?.document?.id !== expected.documentId || extraction.metadata?.document?.etag !== expected.sourceEtag || extraction.metadata?.document?.fileName !== expected.fileName || extraction.metadata?.periodMonth !== expected.periodMonth) throw new Error('extraction_identity_mismatch');\n  if (!Array.isArray(extraction.facts) || !Array.isArray(extraction.bankTransactions)) throw new Error('invalid_extraction_payload');\n\n  const keys = new Set();\n  const rows = [];\n  let deferredFactCount = 0;\n  for (const fact of extraction.facts) {\n    if (typeof fact?.logicalKey !== 'string' || !fact.logicalKey || keys.has(fact.logicalKey)) throw new Error('invalid_or_duplicate_logical_key');\n    keys.add(fact.logicalKey);\n    if (fact.companyId !== expected.companyId || fact.companyName !== expected.companyName || fact.documentId !== expected.documentId || fact.sourceEtag !== expected.sourceEtag) throw new Error('fact_identity_mismatch');\n\n    const canonical = fact.includedInConsolidatedKpi === true && fact.aggregationLevel === 'canonical';\n    if (!canonical) { deferredFactCount += 1; continue; }\n    if (!supported.has(fact.metricCode)) throw new Error('unsupported_canonical_fact');\n    if (fact.periodMonth !== expected.periodMonth || fact.currency !== 'BRL' || fact.reviewStatus !== 'needs_review' || fact.sourceScope !== 'business') throw new Error('invalid_canonical_fact');\n    if (!/^-?\\d+\\.\\d{2}$/.test(fact.amount) || !/^-?\\d+$/.test(fact.amountMinor)) throw new Error('invalid_financial_amount');\n    const amountMatch = fact.amount.match(/^(-?)(\\d+)\\.(\\d{2})$/);\n    const calculatedMinor = ((amountMatch[1] === '-' ? -1n : 1n) * (BigInt(amountMatch[2]) * 100n + BigInt(amountMatch[3]))).toString();\n    if (BigInt(fact.amountMinor).toString() !== calculatedMinor || (fact.metricCode !== 'net_result' && fact.amount.startsWith('-'))) throw new Error('invalid_financial_sign');\n    const sheet = String(fact.evidence?.sheet ?? '').trim();\n    const sourceCell = String(fact.evidence?.cellAddress ?? '');\n    const rowMatch = sourceCell.match(/(\\d+)$/);\n    const sourceRow = rowMatch ? Number(rowMatch[1]) : 0;\n    if (!sheet || sheet.length > 120 || /[\\u0000-\\u001f\\u007f]/.test(sheet) || !/^[A-Z]{1,3}[1-9][0-9]*$/.test(sourceCell) || !Number.isSafeInteger(sourceRow) || sourceRow <= 0) throw new Error('invalid_fact_provenance');\n    const logicalKey = [expected.documentId, expected.sourceEtag, sheet, sourceCell, fact.metricCode, fact.periodMonth].join(':');\n    if (fact.logicalKey !== logicalKey) throw new Error('logical_key_mismatch');\n    rows.push({ logical_key: logicalKey, company_id: expected.companyId, company_name: expected.companyName, month: `${fact.periodMonth}-01`, metric_code: fact.metricCode, amount: fact.amount, currency: 'BRL', sheet, source_row: sourceRow, source_cell: sourceCell, review_status: 'needs_review' });\n  }\n\n  const available = new Set(rows.map((row) => row.metric_code));\n  if ([...supported].some((metric) => !available.has(metric))) throw new Error('missing_required_canonical_fact');\n  if (!uuid.test(String(claim.claim_id ?? ''))) throw new Error('invalid_claim_id');\n\n  return [{ json: { outcome: 'ready', supportedFactCount: rows.length, deferredFactCount, deferredBankTransactionCount: extraction.bankTransactions.length, rpcPayload: { p_document_id: expected.documentId, p_claim_id: claim.claim_id, p_source_etag: expected.sourceEtag, p_status: 'needs_review', p_rows: rows, p_note: `financial-extraction.v1 canonical facts; deferred_facts=${deferredFactCount}; deferred_bank_transactions=${extraction.bankTransactions.length}`, p_excerpt: null } } }];\n} catch (error) {\n  return terminal(error instanceof Error ? error.message : 'invalid_extraction_contract');\n}"
+      },
+      "id": "09e40000-0000-4000-8000-000000000012",
+      "name": "Validate extraction and build v2 payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2160, -160]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "09e40000-0000-4000-8000-000000000103",
+              "leftValue": "={{ $json.outcome }}",
+              "rightValue": "ready",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "09e40000-0000-4000-8000-000000000013",
+      "name": "Persistence payload ready?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [2400, -160]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: $input.first().json.result }];"
+      },
+      "id": "09e40000-0000-4000-8000-000000000014",
+      "name": "Return sanitized extraction result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2640, 20]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://supabase-rpc-gateway:8080/rest/v1/rpc/finance_complete_document_v2",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify($json.rpcPayload) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "id": "09e40000-0000-4000-8000-000000000015",
+      "name": "Complete document with persistence v2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2640, -240],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "SELECT_LOCAL_SUPABASE_CREDENTIAL_AFTER_IMPORT",
+          "name": "LOCAL_ONLY_SUPABASE_SERVICE_ROLE"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst context = $('Validate extraction and build v2 payload').first().json;\nconst expected = $('Define local-only contract').first().json.expected;\nconst statusCode = Number(response.statusCode ?? 200);\nconst body = response.body ?? response;\n\nif (!Number.isInteger(statusCode) || statusCode < 200 || statusCode >= 300) {\n  return [{ json: { status: 'failure', stage: 'persistence', code: 'completion_request_failed', localOnly: true, documentId: expected.documentId } }];\n}\nconst insertedRows = Number(body?.inserted_rows);\nconst unchangedRows = Number(body?.unchanged_rows);\nconst valid = body?.success === true\n  && body?.contract_version === 2\n  && body?.document_id === expected.documentId\n  && body?.status === 'needs_review'\n  && body?.requires_approval === true\n  && Number.isSafeInteger(insertedRows)\n  && insertedRows >= 0\n  && Number.isSafeInteger(unchangedRows)\n  && unchangedRows >= 0\n  && insertedRows + unchangedRows === context.supportedFactCount;\nif (!valid) {\n  return [{ json: { status: 'failure', stage: 'persistence', code: 'invalid_completion_response', localOnly: true, documentId: expected.documentId } }];\n}\nreturn [{ json: { status: 'success', stage: 'persistence', contractVersion: 2, localOnly: true, documentId: expected.documentId, reviewStatus: 'needs_review', publishable: false, insertedRows, unchangedRows, deferredFactCount: context.deferredFactCount, deferredBankTransactionCount: context.deferredBankTransactionCount } }];"
+      },
+      "id": "09e40000-0000-4000-8000-000000000016",
+      "name": "Return sanitized completion result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2880, -240]
+    }
+  ],
+  "connections": {
+    "Manual trigger": { "main": [[{ "node": "Define local-only contract", "type": "main", "index": 0 }]] },
+    "Define local-only contract": { "main": [[{ "node": "Operational preflight approved?", "type": "main", "index": 0 }]] },
+    "Operational preflight approved?": {
+      "main": [
+        [{ "node": "Claim next pilot document", "type": "main", "index": 0 }],
+        [{ "node": "Return blocked preflight result", "type": "main", "index": 0 }]
+      ]
+    },
+    "Claim next pilot document": { "main": [[{ "node": "Validate claim response", "type": "main", "index": 0 }]] },
+    "Validate claim response": { "main": [[{ "node": "Document claimed?", "type": "main", "index": 0 }]] },
+    "Document claimed?": {
+      "main": [
+        [{ "node": "Load approved synthetic XLSX", "type": "main", "index": 0 }],
+        [{ "node": "Return sanitized claim result", "type": "main", "index": 0 }]
+      ]
+    },
+    "Load approved synthetic XLSX": { "main": [[{ "node": "Validate approved fixture", "type": "main", "index": 0 }]] },
+    "Validate approved fixture": { "main": [[{ "node": "Invoke private XLSX worker", "type": "main", "index": 0 }]] },
+    "Invoke private XLSX worker": { "main": [[{ "node": "Validate extraction and build v2 payload", "type": "main", "index": 0 }]] },
+    "Validate extraction and build v2 payload": { "main": [[{ "node": "Persistence payload ready?", "type": "main", "index": 0 }]] },
+    "Persistence payload ready?": {
+      "main": [
+        [{ "node": "Complete document with persistence v2", "type": "main", "index": 0 }],
+        [{ "node": "Return sanitized extraction result", "type": "main", "index": 0 }]
+      ]
+    },
+    "Complete document with persistence v2": { "main": [[{ "node": "Return sanitized completion result", "type": "main", "index": 0 }]] }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "09e40000-0000-4000-8000-000000000099",
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "localOnly": true,
+    "operationalPreflightRequired": true,
+    "contractVersion": "09E.4",
+    "persistenceContract": "financial-extraction-persistence.v2"
+  },
+  "tags": []
+}

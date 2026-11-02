@@ -31,9 +31,12 @@ const { targetPath = "/dashboard", shortYear = false } = Astro.props;
 
 <script>
   import { formatMonthYear } from "../../services/financial/period-format";
-  import { getAvailableFinancialPeriods } from "../../services/financial/monthly-metrics";
+  import {
+    getAvailableFinancialPeriods,
+    type FinancialPeriod,
+  } from "../../services/financial/monthly-metrics";
 
-  function readSelectedPeriod(periods) {
+  function readSelectedPeriod(periods: FinancialPeriod[]) {
     const params = new URLSearchParams(window.location.search);
     const year = Number(params.get("year"));
     const month = Number(params.get("month"));
@@ -44,7 +47,7 @@ const { targetPath = "/dashboard", shortYear = false } = Astro.props;
     return urlPeriod ?? periods[0] ?? null;
   }
 
-  function navigateToPeriod(value) {
+  function navigateToPeriod(value: string) {
     const [year, month] = value.split("-").map(Number);
     const url = new URL(window.location.href);
     const container = document.querySelector("[data-financial-period-select]");
@@ -57,7 +60,7 @@ const { targetPath = "/dashboard", shortYear = false } = Astro.props;
     window.location.href = url.toString();
   }
 
-  function formatPeriodLabel(year, month, useShortYear) {
+  function formatPeriodLabel(year: number, month: number, useShortYear: boolean) {
     const label = formatMonthYear(year, month);
 
     return useShortYear ? label.replace("/20", "/") : label;
@@ -71,7 +74,8 @@ const { targetPath = "/dashboard", shortYear = false } = Astro.props;
     }
 
     try {
-      const periods = await getAvailableFinancialPeriods();
+      const companyId = new URLSearchParams(window.location.search).get("company") || undefined;
+      const periods = await getAvailableFinancialPeriods(companyId);
       const selectedPeriod = readSelectedPeriod(periods);
       const container = document.querySelector("[data-financial-period-select]");
       const useShortYear =

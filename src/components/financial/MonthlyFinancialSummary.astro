@@ -2,18 +2,14 @@
 type SummaryValue = number | null;
 
 interface Props {
-  net_revenue?: SummaryValue;
-  costs?: SummaryValue;
-  operating_expenses?: SummaryValue;
-  financial_expenses?: SummaryValue;
+  revenue?: SummaryValue;
+  expenses?: SummaryValue;
   net_profit?: SummaryValue;
 }
 
 const {
-  net_revenue = null,
-  costs = null,
-  operating_expenses = null,
-  financial_expenses = null,
+  revenue = null,
+  expenses = null,
   net_profit = null,
 } = Astro.props;
 
@@ -38,33 +34,19 @@ function formatCurrency(value: SummaryValue) {
   <div class="card__header">
     <div>
       <h2>Resumo financeiro do mês</h2>
-      <p>Composição do lucro líquido no período selecionado.</p>
+      <p>Valores canônicos publicados, sem inferir classificações ausentes.</p>
     </div>
   </div>
 
   <div class="monthly-financial-summary__rows">
     <div class="monthly-financial-summary__row is-positive">
-      <span>Receita Líquida</span>
-      <strong data-summary-value="net_revenue">{formatCurrency(net_revenue)}</strong>
+      <span>Receitas</span>
+      <strong data-summary-value="revenue">{formatCurrency(revenue)}</strong>
     </div>
 
     <div class="monthly-financial-summary__row is-expense">
-      <span>(-) Custos</span>
-      <strong data-summary-value="costs">{formatCurrency(costs)}</strong>
-    </div>
-
-    <div class="monthly-financial-summary__row is-expense">
-      <span>(-) Despesas Operacionais</span>
-      <strong data-summary-value="operating_expenses">
-        {formatCurrency(operating_expenses)}
-      </strong>
-    </div>
-
-    <div class="monthly-financial-summary__row is-expense">
-      <span>(-) Despesas Financeiras</span>
-      <strong data-summary-value="financial_expenses">
-        {formatCurrency(financial_expenses)}
-      </strong>
+      <span>(-) Despesas</span>
+      <strong data-summary-value="expenses">{formatCurrency(expenses)}</strong>
     </div>
 
     <div class="monthly-financial-summary__row is-total">
@@ -77,10 +59,8 @@ function formatCurrency(value: SummaryValue) {
 <script>
   type SummaryValue = number | null;
   type SummaryData = {
-    net_revenue: SummaryValue;
-    costs: SummaryValue;
-    operating_expenses: SummaryValue;
-    financial_expenses: SummaryValue;
+    revenue: SummaryValue;
+    expenses: SummaryValue;
     net_profit: SummaryValue;
   };
 

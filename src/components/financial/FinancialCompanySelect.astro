@@ -1,0 +1,88 @@
+---
+import "../../styles/components/financial-company-select.scss";
+
+interface Props {
+  targetPath?: string;
+}
+
+const { targetPath = "/dashboard" } = Astro.props;
+---
+
+<label class="financial-company-select" data-financial-company-select data-target-path={targetPath}>
+  <span>Empresa</span>
+  <select data-financial-company aria-label="Selecionar empresa" disabled>
+    <option>Carregando empresas...</option>
+  </select>
+  <small data-financial-company-status aria-live="polite">Carregando empresas...</small>
+</label>
+
+<script>
+  import { getAccessibleFinancialCompanies } from "../../services/financial/companies";
+
+  function navigateToCompany(container: HTMLElement, companyId: string) {
+    const url = new URL(window.location.href);
+    const periodSelect = document.querySelector<HTMLSelectElement>("#financial-period-select");
+
+    // Preserve the period already visible when company filtering is enabled.
+    if (!url.searchParams.has("year") && !url.searchParams.has("month")) {
+      const periodMatch = periodSelect?.value.match(/^(\d{4})-(\d{2})$/);
+
+      if (periodMatch) {
+        url.searchParams.set("year", periodMatch[1]);
+        url.searchParams.set("month", String(Number(periodMatch[2])));
+      }
+    }
+
+    url.pathname = container.dataset.targetPath || window.location.pathname;
+    if (companyId) {
+      url.searchParams.set("company", companyId);
+    } else {
+      url.searchParams.delete("company");
+    }
+
+    window.location.href = url.toString();
+  }
+
+  async function initializeCompanySelect(container: HTMLElement) {
+    const select = container.querySelector<HTMLSelectElement>("[data-financial-company]");
+    const status = container.querySelector<HTMLElement>("[data-financial-company-status]");
+
+    if (!select || !status) {
+      return;
+    }
+
+    try {
+      const companies = await getAccessibleFinancialCompanies();
+      const selectedCompany = new URLSearchParams(window.location.search).get("company") ?? "";
+
+      select.replaceChildren(
+        new Option("Dados legados · origem não verificada", ""),
+        ...companies.map((company) => new Option(company.name, company.id))
+      );
+
+      if (selectedCompany && companies.some((company) => company.id === selectedCompany)) {
+        select.value = selectedCompany;
+        status.textContent = "Dados aprovados são isolados por empresa.";
+      } else if (selectedCompany) {
+        select.append(new Option("Empresa selecionada indisponível", selectedCompany));
+        select.value = selectedCompany;
+        status.textContent = "Empresa inativa ou sem permissão para esta sessão.";
+        status.dataset.tone = "error";
+      } else {
+        status.textContent = "Valores legados não são atribuídos a nenhuma empresa.";
+      }
+
+      select.disabled = false;
+      select.addEventListener("change", () => navigateToCompany(container, select.value));
+    } catch (error) {
+      select.replaceChildren(new Option("Erro ao carregar empresas", ""));
+      status.textContent = error instanceof Error
+        ? error.message
+        : "Não foi possível carregar as empresas.";
+      status.dataset.tone = "error";
+    }
+  }
+
+  document.querySelectorAll<HTMLElement>("[data-financial-company-select]")
+    .forEach((container) => initializeCompanySelect(container));
+</script>

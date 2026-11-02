@@ -1,4 +1,10 @@
 ---
+import type { Activity } from "../../types/activity";
+
+interface Props {
+  activities?: Activity[];
+}
+
 const { activities = [] } = Astro.props;
 ---
 

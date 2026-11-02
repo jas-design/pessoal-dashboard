@@ -1,0 +1,160 @@
+name: fabio-09e1-local
+
+services:
+  n8n:
+    image: ${N8N_IMAGE:?configure uma imagem n8n local fixada por versao ou digest}
+    pull_policy: never
+    container_name: fabio-09e1-n8n
+    restart: "no"
+    init: true
+    ports:
+      - "127.0.0.1:5679:5678"
+    environment:
+      N8N_HOST: 127.0.0.1
+      N8N_LISTEN_ADDRESS: 0.0.0.0
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      N8N_EDITOR_BASE_URL: http://127.0.0.1:5679
+      WEBHOOK_URL: http://127.0.0.1:5679
+      GENERIC_TIMEZONE: America/Sao_Paulo
+      TZ: America/Sao_Paulo
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_VERSION_NOTIFICATIONS_ENABLED: "false"
+      N8N_TEMPLATES_ENABLED: "false"
+      N8N_PERSONALIZATION_ENABLED: "false"
+      N8N_COMMUNITY_PACKAGES_ENABLED: "false"
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
+      N8N_SECURE_COOKIE: "false"
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "true"
+      N8N_RESTRICT_FILE_ACCESS_TO: /fixtures
+      N8N_DEFAULT_BINARY_DATA_MODE: filesystem
+      N8N_BINARY_DATA_STORAGE_PATH: /home/node/.n8n/binaryData
+      EXECUTIONS_DATA_SAVE_ON_SUCCESS: none
+      EXECUTIONS_DATA_SAVE_ON_ERROR: none
+      EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS: "false"
+      EXECUTIONS_DATA_PRUNE: "true"
+      EXECUTIONS_DATA_MAX_AGE: 24
+      EXECUTIONS_DATA_PRUNE_MAX_COUNT: 20
+    volumes:
+      - type: volume
+        source: n8n_data
+        target: /home/node/.n8n
+      - type: bind
+        source: ${FABIO_SYNTHETIC_FIXTURE_PATH:?informe o caminho absoluto da fixture sintetica autorizada}
+        target: /fixtures/09b-synthetic-financial-report.xlsx
+        read_only: true
+    networks:
+      - financial_pipeline
+      - n8n_host_access
+    depends_on:
+      financial-xlsx-worker:
+        condition: service_healthy
+      supabase-rpc-gateway:
+        condition: service_started
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777,noexec,nosuid,nodev
+      - /home/node/.cache:size=64m,mode=0700,uid=1000,gid=1000,noexec,nosuid,nodev
+    mem_limit: 768m
+    cpus: 1.0
+    pids_limit: 128
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+  supabase-rpc-gateway:
+    image: ${SUPABASE_RPC_GATEWAY_IMAGE:?configure uma imagem nginx unprivileged local fixada por digest}
+    pull_policy: never
+    container_name: fabio-09e1-supabase-rpc-gateway
+    restart: "no"
+    init: true
+    volumes:
+      - type: bind
+        source: ./supabase-rpc-gateway.conf
+        target: /etc/nginx/nginx.conf
+        read_only: true
+    expose:
+      - "8080"
+    networks:
+      - financial_pipeline
+      - supabase_local
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777,noexec,nosuid,nodev
+    mem_limit: 64m
+    cpus: 0.25
+    pids_limit: 32
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging:
+      driver: json-file
+      options:
+        max-size: "2m"
+        max-file: "2"
+
+  financial-xlsx-worker:
+    image: fabio-financial-xlsx-worker:09e1-local
+    pull_policy: never
+    build:
+      context: ../..
+      dockerfile: workers/financial-xlsx/Dockerfile
+    container_name: fabio-09e1-financial-xlsx-worker
+    restart: "no"
+    init: true
+    environment:
+      FINANCIAL_XLSX_WORKER_SECRET_FILE: /run/secrets/financial_xlsx_worker_auth
+      FINANCIAL_XLSX_WORKER_HOST: 0.0.0.0
+      FINANCIAL_XLSX_WORKER_PORT: 8787
+      FINANCIAL_XLSX_MAX_FILE_SIZE: 8388608
+      FINANCIAL_XLSX_TIMEOUT_MS: 30000
+      FINANCIAL_XLSX_MAX_OLD_SPACE_MB: 256
+    expose:
+      - "8787"
+    networks:
+      - financial_pipeline
+    secrets:
+      - source: financial_xlsx_worker_auth
+        target: financial_xlsx_worker_auth
+        mode: 0444
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777,noexec,nosuid,nodev
+    mem_limit: 384m
+    cpus: 0.75
+    pids_limit: 64
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+networks:
+  financial_pipeline:
+    name: fabio-09e1-financial-pipeline
+    internal: true
+  n8n_host_access:
+    name: fabio-09e1-n8n-host-access
+    driver: bridge
+  supabase_local:
+    external: true
+    name: supabase_network_kawana-07c11-staging
+
+volumes:
+  n8n_data:
+    name: fabio-09e1-n8n-data
+
+secrets:
+  financial_xlsx_worker_auth:
+    file: ${FINANCIAL_XLSX_WORKER_SECRET_PATH:?informe o arquivo local do segredo do worker}

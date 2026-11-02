@@ -392,6 +392,27 @@ Supabase.
 
 ---
 
+## 6.7 Publicacao financeira aprovada por empresa
+
+A migration `20261030120000_financial_monthly_publication.sql` adiciona o
+contrato versionado `financial_monthly_metrics_published`. Ela permanece
+pendente de aplicacao e validacao no staging isolado.
+
+Esse contrato:
+
+- identifica cada metrica por `company_id` e `period_month`;
+- preserva valores ausentes como `NULL`;
+- registra documento, ETag, fatos aprovados, digest e timestamps;
+- permite leitura autenticada somente pela RLS da empresa;
+- publica somente via `finance_publish_monthly_metrics`, executada no servidor;
+- nao altera nem sobrescreve `financial_monthly_metrics` legado.
+
+Dashboard e Financeiro devem usar a tabela publicada quando uma empresa for
+selecionada. Os dados legados continuam separados e identificados como origem
+nao verificada.
+
+---
+
 # 7. Dados financeiros futuros
 
 A tabela `financial_monthly_metrics` representa valores consolidados.

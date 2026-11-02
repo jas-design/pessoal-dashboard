@@ -1,4 +1,9 @@
+import type { Session } from "@supabase/supabase-js";
 import supabase from "../../lib/supabase/browser";
+import {
+  resolveSupabaseConnectionStatus,
+  type SupabaseConnectionState,
+} from "./connection-status";
 import {
   initializeThemePreference,
   readThemePreference,
@@ -6,7 +11,11 @@ import {
   type ThemePreference,
 } from "./theme";
 
-type IntegrationStatus = "Conectado" | "Nao conectado" | "Configuracao pendente";
+type IntegrationStatus =
+  | "Conectado"
+  | "Nao conectado"
+  | "Configuracao pendente"
+  | "Nao verificado";
 type DefaultFinancialPeriod = "current_month" | "latest_with_data";
 
 interface SafeIntegration {
@@ -42,6 +51,11 @@ interface Company {
   updated_at: string | null;
 }
 
+interface LoadResult<T> {
+  data: T;
+  serviceVerified: boolean;
+}
+
 const periodPreferenceStorageKey = "dashboard-default-financial-period";
 const defaultFinancialPeriod: DefaultFinancialPeriod = "current_month";
 
@@ -52,6 +66,13 @@ const state = {
   supportsDefaultFinancialPeriod: false,
   supportsDefaultCompany: false,
 };
+
+let initialized = false;
+let authEventVersion = 0;
+let currentGeneration = 0;
+let currentUserId: string | null = null;
+let currentLoadSucceeded = false;
+let currentLoadInProgress = false;
 
 function isThemePreference(value: string | null | undefined): value is ThemePreference {
   return value === "system" || value === "light" || value === "dark";
@@ -142,12 +163,27 @@ function setBadge(key: string, status: IntegrationStatus) {
   }
 
   element.textContent = status;
-  element.dataset.state =
-    status === "Conectado"
-      ? "connected"
-      : status === "Nao conectado"
-        ? "disconnected"
-        : "pending";
+  element.dataset.state = status === "Conectado"
+    ? "connected"
+    : status === "Nao conectado"
+      ? "disconnected"
+      : status === "Configuracao pendente"
+        ? "pending"
+        : "neutral";
+}
+
+function renderSupabaseConnection(connectionState: SupabaseConnectionState) {
+  const status = resolveSupabaseConnectionStatus(connectionState);
+  const badge = document.querySelector<HTMLElement>(
+    '[data-settings-status="supabase"]',
+  );
+
+  if (badge) {
+    badge.textContent = status.label;
+    badge.dataset.state = status.badgeState;
+  }
+
+  setValue("integration_supabase_detail", status.detail);
 }
 
 function readStoredPeriodPreference(): DefaultFinancialPeriod {
@@ -160,17 +196,7 @@ function writeStoredPeriodPreference(value: DefaultFinancialPeriod) {
   localStorage.setItem(periodPreferenceStorageKey, value);
 }
 
-async function getCurrentProfile(): Promise<Profile | null> {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session?.user) {
-    return null;
-  }
-
-  state.userId = session.user.id;
-
+async function getCurrentProfile(session: Session): Promise<LoadResult<Profile | null>> {
   const { data, error } = await supabase
     .from("profiles")
     .select("id, full_name, email, role, status, updated_at")
@@ -179,33 +205,32 @@ async function getCurrentProfile(): Promise<Profile | null> {
 
   if (error) {
     return {
-      id: session.user.id,
-      full_name: session.user.user_metadata?.full_name ?? null,
-      email: session.user.email ?? null,
-      role: null,
-      status: null,
-      updated_at: null,
+      data: {
+        id: session.user.id,
+        full_name: session.user.user_metadata?.full_name ?? null,
+        email: session.user.email ?? null,
+        role: null,
+        status: null,
+        updated_at: null,
+      },
+      serviceVerified: false,
     };
   }
 
-  return data as Profile | null;
+  return { data: data as Profile | null, serviceVerified: true };
 }
 
-async function getUserPreference(): Promise<UserPreference | null> {
-  if (!state.userId) {
-    return null;
-  }
-
+async function getUserPreference(userId: string): Promise<LoadResult<UserPreference | null>> {
   const { data, error } = await supabase
     .from("user_preferences")
     .select("theme, updated_at")
-    .eq("user_id", state.userId)
+    .eq("user_id", userId)
     .maybeSingle();
 
   if (error) {
     state.supportsUserPreferences = false;
     state.supportsDefaultCompany = false;
-    return null;
+    return { data: null, serviceVerified: false };
   }
 
   state.supportsUserPreferences = true;
@@ -221,7 +246,7 @@ async function getUserPreference(): Promise<UserPreference | null> {
   const { data: periodData, error: periodError } = await supabase
     .from("user_preferences")
     .select("default_financial_period, updated_at")
-    .eq("user_id", state.userId)
+    .eq("user_id", userId)
     .maybeSingle();
 
   state.supportsDefaultFinancialPeriod = !periodError;
@@ -243,7 +268,7 @@ async function getUserPreference(): Promise<UserPreference | null> {
   const { data: companyData, error: companyError } = await supabase
     .from("user_preferences")
     .select("default_company_id, updated_at")
-    .eq("user_id", state.userId)
+    .eq("user_id", userId)
     .maybeSingle();
 
   state.supportsDefaultCompany = !companyError;
@@ -258,33 +283,33 @@ async function getUserPreference(): Promise<UserPreference | null> {
     preference.updated_at = companyPreference?.updated_at ?? preference.updated_at;
   }
 
-  return preference;
+  return { data: preference, serviceVerified: true };
 }
 
-async function getCompanies(): Promise<Company[] | null> {
+async function getCompanies(): Promise<LoadResult<Company[] | null>> {
   const { data, error } = await supabase
     .from("companies")
     .select("id, name, legal_name, status, updated_at")
     .order("name", { ascending: true });
 
   if (error) {
-    return null;
+    return { data: null, serviceVerified: false };
   }
 
-  return (data ?? []) as Company[];
+  return { data: (data ?? []) as Company[], serviceVerified: true };
 }
 
-async function getSafeIntegrations(): Promise<SafeIntegration[] | null> {
+async function getSafeIntegrations(): Promise<LoadResult<SafeIntegration[] | null>> {
   const { data, error } = await supabase
     .from("integrations")
     .select("id, name, provider, status, is_active, last_sync_at")
     .order("created_at", { ascending: true });
 
   if (error) {
-    return null;
+    return { data: null, serviceVerified: false };
   }
 
-  return (data ?? []) as SafeIntegration[];
+  return { data: (data ?? []) as SafeIntegration[], serviceVerified: true };
 }
 
 function renderProfile(profile: Profile | null) {
@@ -296,9 +321,14 @@ function renderProfile(profile: Profile | null) {
   setValue("auth_status", profile ? "Sessao autenticada" : "Sessao nao encontrada");
 }
 
-function renderCompanies(companies: Company[] | null) {
+function renderCompanies(
+  companies: Company[] | null,
+  unavailableMessage?: { title: string; detail: string },
+) {
   const body = document.querySelector<HTMLTableSectionElement>("[data-settings-companies-body]");
   const empty = document.querySelector<HTMLElement>("[data-settings-companies-empty]");
+  const emptyTitle = document.querySelector<HTMLElement>("[data-settings-companies-empty-title]");
+  const emptyDetail = document.querySelector<HTMLElement>("[data-settings-companies-empty-detail]");
 
   if (!body || !empty) {
     return;
@@ -307,6 +337,13 @@ function renderCompanies(companies: Company[] | null) {
   body.replaceChildren();
 
   if (!companies?.length) {
+    if (emptyTitle) {
+      emptyTitle.textContent = unavailableMessage?.title ?? "Nenhuma empresa encontrada.";
+    }
+    if (emptyDetail) {
+      emptyDetail.textContent = unavailableMessage?.detail
+        ?? "Quando houver empresas cadastradas, elas aparecerao aqui.";
+    }
     empty.hidden = false;
     return;
   }
@@ -355,9 +392,17 @@ function getIntegrationStatus(integration: SafeIntegration | undefined): Integra
   return "Configuracao pendente";
 }
 
-function renderIntegrations(integrations: SafeIntegration[] | null) {
-  setBadge("supabase", "Conectado");
-  setValue("integration_supabase_detail", "Autenticacao e banco de dados ativos via Supabase.");
+function renderIntegrations(
+  integrations: SafeIntegration[] | null,
+  serviceVerified: boolean,
+) {
+  if (!serviceVerified) {
+    setBadge("n8n", "Nao verificado");
+    setValue("integration_n8n_detail", "Nao foi possivel verificar esta integracao agora.");
+    setBadge("onedrive", "Nao verificado");
+    setValue("integration_onedrive_detail", "Nao foi possivel verificar esta integracao agora.");
+    return;
+  }
 
   const n8n = findIntegration(integrations, ["n8n"]);
   const onedrive = findIntegration(integrations, ["onedrive", "one drive", "microsoft"]);
@@ -365,14 +410,16 @@ function renderIntegrations(integrations: SafeIntegration[] | null) {
   setBadge("n8n", getIntegrationStatus(n8n));
   setValue(
     "integration_n8n_detail",
-    n8n ? `Ultima sincronizacao: ${formatDateTime(n8n.last_sync_at)}` : "Aguardando configuracao."
+    n8n
+      ? `Ultima sincronizacao registrada: ${formatDateTime(n8n.last_sync_at)}`
+      : "Nenhuma configuracao registrada."
   );
   setBadge("onedrive", getIntegrationStatus(onedrive));
   setValue(
     "integration_onedrive_detail",
     onedrive
-      ? `Ultima sincronizacao: ${formatDateTime(onedrive.last_sync_at)}`
-      : "Conexao sera ativada em uma etapa futura."
+      ? `Ultima sincronizacao registrada: ${formatDateTime(onedrive.last_sync_at)}`
+      : "Nenhuma configuracao registrada."
   );
 }
 
@@ -476,9 +523,14 @@ async function savePreferences() {
     payload.default_company_id = values.defaultCompanyId;
   }
 
+  const userId = state.userId;
   const { error } = await supabase
     .from("user_preferences")
     .upsert(payload, { onConflict: "user_id" });
+
+  if (userId !== state.userId) {
+    return;
+  }
 
   if (error) {
     setPreferenceStatus(
@@ -522,19 +574,169 @@ function bindPreferenceForm() {
   });
 }
 
-export async function loadSettingsPage() {
-  initializeThemePreference();
+function isValidSession(session: Session | null): session is Session {
+  if (!session?.user?.id) {
+    return false;
+  }
 
-  const [profile, companies, integrations] = await Promise.all([
-    getCurrentProfile(),
+  return !session.expires_at || session.expires_at * 1000 > Date.now();
+}
+
+function renderLoadingState() {
+  setValue("profile_name", "Verificando...");
+  setValue("profile_email", "Verificando...");
+  setValue("profile_role", "Verificando...");
+  setValue("profile_status", "Verificando...");
+  setValue("profile_updated_at", "Verificando...");
+  setValue("auth_status", "Verificando sessao...");
+  renderSupabaseConnection("loading");
+
+  const body = document.querySelector<HTMLTableSectionElement>("[data-settings-companies-body]");
+  const empty = document.querySelector<HTMLElement>("[data-settings-companies-empty]");
+  body?.replaceChildren();
+  if (empty) empty.hidden = true;
+}
+
+function renderUnauthenticatedState() {
+  state.userId = null;
+  state.preferences = null;
+  state.supportsUserPreferences = false;
+  state.supportsDefaultFinancialPeriod = false;
+  state.supportsDefaultCompany = false;
+  renderProfile(null);
+  renderCompanies(null, {
+    title: "Sessao necessaria.",
+    detail: "Entre na conta para consultar as empresas disponiveis.",
+  });
+  renderIntegrations(null, false);
+  renderSupabaseConnection("session_missing");
+  renderPreferenceForm(null, null);
+}
+
+function renderSessionError() {
+  state.userId = null;
+  state.preferences = null;
+  state.supportsUserPreferences = false;
+  state.supportsDefaultFinancialPeriod = false;
+  state.supportsDefaultCompany = false;
+  currentUserId = null;
+  currentLoadSucceeded = false;
+  currentLoadInProgress = false;
+  renderProfile(null);
+  setValue("auth_status", "Nao foi possivel verificar a sessao");
+  renderCompanies(null, {
+    title: "Empresas nao verificadas.",
+    detail: "Tente novamente depois que a sessao estiver disponivel.",
+  });
+  renderIntegrations(null, false);
+  renderSupabaseConnection("verification_error");
+  renderPreferenceForm(null, null);
+}
+
+async function loadAuthenticatedSettings(session: Session, generation: number) {
+  state.userId = session.user.id;
+  state.supportsUserPreferences = false;
+  state.supportsDefaultFinancialPeriod = false;
+  state.supportsDefaultCompany = false;
+
+  const [profile, companies, integrations, preference] = await Promise.all([
+    getCurrentProfile(session),
     getCompanies(),
     getSafeIntegrations(),
+    getUserPreference(session.user.id),
   ]);
-  const preference = await getUserPreference();
 
-  renderProfile(profile);
-  renderCompanies(companies);
-  renderIntegrations(integrations);
-  renderPreferenceForm(preference, companies);
+  if (generation !== currentGeneration || currentUserId !== session.user.id) {
+    return;
+  }
+
+  const serviceVerified = [profile, companies, integrations, preference].some(
+    (result) => result.serviceVerified,
+  );
+  currentLoadSucceeded = serviceVerified;
+  currentLoadInProgress = false;
+
+  renderProfile(profile.data);
+  setValue("auth_status", "Sessao autenticada");
+  renderCompanies(
+    companies.data,
+    companies.serviceVerified
+      ? undefined
+      : {
+          title: "Empresas nao verificadas.",
+          detail: "Nao foi possivel consultar as empresas agora.",
+        },
+  );
+  renderIntegrations(integrations.data, integrations.serviceVerified);
+  renderPreferenceForm(preference.data, companies.data);
+  renderSupabaseConnection(serviceVerified ? "service_verified" : "verification_error");
+}
+
+function applySession(session: Session | null) {
+  const nextUserId = isValidSession(session) ? session.user.id : null;
+
+  if (
+    nextUserId === currentUserId
+    && (currentLoadSucceeded || currentLoadInProgress)
+  ) {
+    return;
+  }
+
+  currentUserId = nextUserId;
+  currentGeneration += 1;
+  currentLoadSucceeded = false;
+  currentLoadInProgress = false;
+
+  if (!nextUserId || !session) {
+    renderUnauthenticatedState();
+    return;
+  }
+
+  renderLoadingState();
+  currentLoadInProgress = true;
+  const generation = currentGeneration;
+  void loadAuthenticatedSettings(session, generation).catch(() => {
+    if (generation === currentGeneration && currentUserId === session.user.id) {
+      currentLoadInProgress = false;
+      renderSessionError();
+    }
+  });
+}
+
+export function loadSettingsPage() {
+  initializeThemePreference();
+
+  if (initialized) {
+    return;
+  }
+
+  initialized = true;
   bindPreferenceForm();
+  renderLoadingState();
+
+  supabase.auth.onAuthStateChange((_event, session) => {
+    authEventVersion += 1;
+    applySession(session);
+  });
+
+  const versionBeforeRequest = authEventVersion;
+  supabase.auth
+    .getSession()
+    .then(({ data, error }) => {
+      if (authEventVersion !== versionBeforeRequest) {
+        return;
+      }
+
+      if (error) {
+        renderSessionError();
+        return;
+      }
+
+      applySession(data.session);
+    })
+    .catch(() => {
+      if (authEventVersion === versionBeforeRequest) {
+        renderSessionError();
+      }
+    });
 }

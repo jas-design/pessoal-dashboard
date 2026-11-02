@@ -1,5 +1,24 @@
 ---
-const menuItems = [
+const icons = {
+  grid: "[ ]",
+  money: "[$]",
+  bank: "[$]",
+  report: "[=]",
+  file: "[#]",
+  settings: "[=]",
+  bell: "[!]",
+} as const;
+
+type IconName = keyof typeof icons;
+
+interface MenuItem {
+  label: string;
+  href: string;
+  icon: IconName;
+  badge: string | null;
+}
+
+const menuItems: MenuItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: "grid", badge: null },
   { label: "Financeiro", href: "/financeiro", icon: "money", badge: null },
   { label: "Bancos e Contas", href: "/bancos-contas", icon: "bank", badge: null },
@@ -15,16 +34,6 @@ const menuItems = [
 ];
 
 const currentPath = Astro.url.pathname;
-
-const icons = {
-  grid: "[ ]",
-  money: "[$]",
-  bank: "[$]",
-  report: "[=]",
-  file: "[#]",
-  settings: "[=]",
-  bell: "[!]",
-};
 ---
 
 <aside class="sidebar">
@@ -57,29 +66,19 @@ const icons = {
   </nav>
 
   <div class="sidebar__footer">
-    <div class="sidebar__status">
-      <div class="sidebar__status-header">
-        <span>Status</span>
-        <strong>Producao</strong>
-      </div>
-
-      <div class="sidebar__usage">
-        <span>Uso do Sistema</span>
-        <span>2.4 GB / 5 GB</span>
-      </div>
-
-      <div class="sidebar__progress">
-        <div style="width: 48%;"></div>
-      </div>
-    </div>
-
-    <div class="sidebar__user">
-      <div class="sidebar__avatar">AB</div>
+    <div class="sidebar__user" aria-live="polite">
+      <div class="sidebar__avatar" data-sidebar-user-avatar aria-hidden="true">…</div>
 
       <div>
-        <strong>Andres Braun</strong>
-        <span>Administrador</span>
+        <strong data-sidebar-user-name>Verificando sessão</strong>
+        <span data-sidebar-user-status>Aguarde</span>
       </div>
     </div>
   </div>
 </aside>
+
+<script>
+  import { initializeSidebarSession } from "../../scripts/layout/sidebar";
+
+  initializeSidebarSession();
+</script>

@@ -72,8 +72,10 @@ import "../styles/pages/configuracoes.scss";
 
       <div class="empty-state settings-empty" data-settings-companies-empty hidden>
         <div>
-          <h3>Nenhuma empresa encontrada.</h3>
-          <p>Quando houver empresas cadastradas, elas aparecerao aqui.</p>
+          <h3 data-settings-companies-empty-title>Nenhuma empresa encontrada.</h3>
+          <p data-settings-companies-empty-detail>
+            Quando houver empresas cadastradas, elas aparecerao aqui.
+          </p>
         </div>
       </div>
     </section>
@@ -90,7 +92,7 @@ import "../styles/pages/configuracoes.scss";
         <article class="settings-integration-card">
           <div>
             <h3>Supabase</h3>
-            <span data-settings-status="supabase">Carregando...</span>
+            <span data-settings-status="supabase" aria-live="polite">Carregando...</span>
           </div>
           <p data-settings-value="integration_supabase_detail">Carregando...</p>
         </article>
@@ -98,7 +100,7 @@ import "../styles/pages/configuracoes.scss";
         <article class="settings-integration-card">
           <div>
             <h3>n8n</h3>
-            <span data-settings-status="n8n">Carregando...</span>
+            <span data-settings-status="n8n" aria-live="polite">Carregando...</span>
           </div>
           <p data-settings-value="integration_n8n_detail">Carregando...</p>
         </article>
@@ -106,7 +108,7 @@ import "../styles/pages/configuracoes.scss";
         <article class="settings-integration-card">
           <div>
             <h3>OneDrive</h3>
-            <span data-settings-status="onedrive">Carregando...</span>
+            <span data-settings-status="onedrive" aria-live="polite">Carregando...</span>
           </div>
           <p data-settings-value="integration_onedrive_detail">Carregando...</p>
         </article>

@@ -1,6 +1,5 @@
 ---
 import FinancialPeriodSelect from "../financial/FinancialPeriodSelect.astro";
-import { getUnreadNotificationsCount } from "../../services/notifications/notifications";
 import "../../styles/layouts/header.scss";
 
 const {
@@ -9,7 +8,6 @@ const {
   showFinancialPeriod = false,
 } = Astro.props;
 
-const unreadCount = await getUnreadNotificationsCount();
 ---
 
 <header class="header">
@@ -48,9 +46,14 @@ const unreadCount = await getUnreadNotificationsCount();
       </span>
     </button>
 
-    <a href="/notificacoes" class="header__notification">
-      🔔
-      {unreadCount > 0 && <span>{unreadCount}</span>}
+    <a
+      href="/notificacoes"
+      class="header__notification"
+      data-notifications-link
+      aria-label="Notificações, verificando contagem"
+    >
+      <span class="header__notification-icon" aria-hidden="true">🔔</span>
+      <span data-notifications-unread-count hidden></span>
     </a>
 
     <button class="header__logout" id="logout-button"> Sair </button>
@@ -59,6 +62,7 @@ const unreadCount = await getUnreadNotificationsCount();
 
 <script>
   import { signOut } from "../../services/auth/auth";
+  import { initializeNotifications } from "../../scripts/notifications/notifications-page";
   import {
     getCurrentEffectiveTheme,
     initializeThemePreference,
@@ -95,4 +99,5 @@ const unreadCount = await getUnreadNotificationsCount();
   initializeThemePreference();
   loadAccountThemePreference().finally(updateThemeToggleLabel);
   updateThemeToggleLabel();
+  initializeNotifications();
 </script>

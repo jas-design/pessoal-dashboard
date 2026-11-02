@@ -1,11 +1,12 @@
 ---
 import CashFlowChart from "../components/financial/CashFlowChart.astro";
+import FinancialCompanySelect from "../components/financial/FinancialCompanySelect.astro";
 import FinancialAccountsSection from "../components/financial/FinancialAccountsSection.astro";
 import FinancialIndicatorsSection from "../components/financial/FinancialIndicatorsSection.astro";
 import FinancialMetricCard from "../components/financial/FinancialMetricCard.astro";
 import MonthlyFinancialSummary from "../components/financial/MonthlyFinancialSummary.astro";
 import DashboardLayout from "../layouts/DashboardLayout.astro";
-import { financialMetricCards } from "../services/financial/dashboard-data";
+import { financialMetricCards } from "../services/financial/dashboard-metric-cards";
 import "../styles/pages/dashboard.scss";
 
 const loadingSparklinePath = "M 0 36 L 240 36";
@@ -16,6 +17,13 @@ const loadingSparklinePath = "M 0 36 L 240 36";
   subtitle="Resumo essencial dos indicadores que importam para sua leitura financeira."
   showFinancialPeriod
 >
+  <section class="dashboard-financial-controls" aria-label="Escopo financeiro">
+    <FinancialCompanySelect targetPath="/dashboard" />
+    <p data-dashboard-financial-status role="status" aria-live="polite">
+      Verificando origem dos dados financeiros...
+    </p>
+  </section>
+
   <section class="metrics-grid" id="dashboard-metrics-grid" aria-live="polite">
     {
       financialMetricCards.map((metric, index) => (

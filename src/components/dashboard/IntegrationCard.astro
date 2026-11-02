@@ -1,4 +1,17 @@
 ---
+interface IntegrationStat {
+  label: string;
+  value: string | number;
+}
+
+interface Props {
+  name: string;
+  status?: string;
+  icon?: string;
+  tag?: string;
+  stats?: IntegrationStat[];
+}
+
 const {
   name,
   status = "Conectado",

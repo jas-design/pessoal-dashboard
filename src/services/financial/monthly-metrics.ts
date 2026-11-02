@@ -1,10 +1,20 @@
 import supabase from "../../lib/supabase/browser";
+import {
+  getPublishedFinancialPeriods,
+  getPublishedMetricHistory,
+  getPublishedMonthlyMetrics,
+} from "./published-monthly-metrics";
+
+export type FinancialDataState = "approved" | "pending" | "missing" | "unverified";
 
 export interface MonthlyFinancialMetrics {
   id: string;
+  company_id: string | null;
+  period_month: string;
   year: number;
   month: number;
   revenue: number | null;
+  expenses: number | null;
   net_profit: number | null;
   net_margin: number | null;
   cash_balance: number | null;
@@ -14,6 +24,11 @@ export interface MonthlyFinancialMetrics {
   costs: number | null;
   operating_expenses: number | null;
   financial_expenses: number | null;
+  data_state: FinancialDataState;
+  source_document_id: string | null;
+  source_etag: string | null;
+  approved_at: string | null;
+  published_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -25,6 +40,14 @@ export interface FinancialPeriod {
 
 type FinancialMonthlyMetricsRow = Omit<
   MonthlyFinancialMetrics,
+  | "company_id"
+  | "period_month"
+  | "expenses"
+  | "data_state"
+  | "source_document_id"
+  | "source_etag"
+  | "approved_at"
+  | "published_at"
   | "revenue"
   | "net_profit"
   | "net_margin"
@@ -100,6 +123,9 @@ function toMonthlyFinancialMetrics(
 
   return {
     ...metric,
+    company_id: null,
+    period_month: `${metric.year}-${String(metric.month).padStart(2, "0")}-01`,
+    expenses: null,
     revenue: metric.revenue === null ? null : Number(metric.revenue),
     net_profit: metric.net_profit === null ? null : Number(metric.net_profit),
     net_margin: metric.net_margin === null ? null : Number(metric.net_margin),
@@ -112,14 +138,24 @@ function toMonthlyFinancialMetrics(
       metric.operating_expenses === null ? null : Number(metric.operating_expenses),
     financial_expenses:
       metric.financial_expenses === null ? null : Number(metric.financial_expenses),
+    data_state: "unverified",
+    source_document_id: null,
+    source_etag: null,
+    approved_at: null,
+    published_at: null,
   };
 }
 
 export async function getMonthlyFinancialMetrics(
   year: number,
-  month: number
+  month: number,
+  companyId?: string
 ): Promise<MonthlyFinancialMetrics | null> {
   assertValidPeriod(year, month);
+
+  if (companyId) {
+    return getPublishedMonthlyMetrics(companyId, year, month);
+  }
 
   const { data, error } = await supabase
     .from("financial_monthly_metrics")
@@ -137,16 +173,23 @@ export async function getMonthlyFinancialMetrics(
 
 export async function getPreviousMonthFinancialMetrics(
   year: number,
-  month: number
+  month: number,
+  companyId?: string
 ): Promise<MonthlyFinancialMetrics | null> {
   assertValidPeriod(year, month);
 
   const period = previousMonth(year, month);
 
-  return getMonthlyFinancialMetrics(period.year, period.month);
+  return getMonthlyFinancialMetrics(period.year, period.month, companyId);
 }
 
-export async function getAvailableFinancialPeriods(): Promise<FinancialPeriod[]> {
+export async function getAvailableFinancialPeriods(
+  companyId?: string
+): Promise<FinancialPeriod[]> {
+  if (companyId) {
+    return getPublishedFinancialPeriods(companyId);
+  }
+
   const { data, error } = await supabase
     .from("financial_monthly_metrics")
     .select("*")
@@ -170,9 +213,14 @@ export async function getAvailableFinancialPeriods(): Promise<FinancialPeriod[]>
 export async function getFinancialMetricHistory(
   year: number,
   month: number,
-  limit = 6
+  limit = 6,
+  companyId?: string
 ): Promise<MonthlyFinancialMetrics[]> {
   assertValidPeriod(year, month);
+
+  if (companyId) {
+    return getPublishedMetricHistory(companyId, year, month, limit);
+  }
 
   const selectedMonthIndex = monthIndex({ year, month });
 

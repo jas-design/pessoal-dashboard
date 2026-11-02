@@ -239,7 +239,8 @@ test("adaptador mantém erros de fórmula e escopo ambíguo em revisão", async 
 const realWorkbookPath = resolve(".local/kawana/09.2026 Relatório Gerencial Kawana.xlsx");
 
 test("integração local processa o XLSX real sem persistência", {
-  skip: !existsSync(realWorkbookPath),
+  skip: process.env.RUN_REAL_FINANCIAL_FIXTURE_TESTS !== "1"
+    || !existsSync(realWorkbookPath),
 }, async () => {
   const binary = await readFile(realWorkbookPath);
   const result = await extractFinancialXlsx({

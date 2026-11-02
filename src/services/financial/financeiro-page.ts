@@ -1,5 +1,4 @@
 import { getPayables, getPayableSummary } from "./payables";
-import supabase from "../../lib/supabase/browser";
 import { formatMonthYear } from "./period-format";
 import { getReceivables, getReceivableSummary } from "./receivables";
 import {
@@ -10,9 +9,11 @@ import {
   type MonthlyFinancialMetrics,
 } from "./monthly-metrics";
 import {
+  getFinancialDataMessage,
   getReliableExpenses,
   getReliableRevenue,
   isRealFinancialNumber,
+  resolveFinancialOverview,
 } from "./financial-calculations";
 import {
   getTransactions,
@@ -127,24 +128,6 @@ function preservePeriodInUrl(period: FinancialPeriod) {
   window.history.replaceState({}, "", url);
 }
 
-type Company = {
-  id: string;
-  name: string;
-  is_active: boolean;
-};
-
-function setCompanyStatus(message: string, tone: "default" | "error" = "default") {
-  const status = document.querySelector<HTMLElement>("[data-financeiro-company-status]");
-
-  if (!status) {
-    return;
-  }
-
-  status.textContent = message;
-  status.dataset.tone = tone;
-  status.hidden = !message;
-}
-
 function setFinancialDataStatus(message: string) {
   const status = document.querySelector<HTMLElement>("[data-financeiro-data-status]");
 
@@ -154,86 +137,6 @@ function setFinancialDataStatus(message: string) {
 
   status.textContent = message;
   status.hidden = !message;
-}
-
-function navigateToCompany(companyId: string) {
-  const url = new URL(window.location.href);
-
-  if (companyId) {
-    url.searchParams.set("company", companyId);
-  } else {
-    url.searchParams.delete("company");
-  }
-
-  window.location.href = url.toString();
-}
-
-async function loadCompanies() {
-  const select = document.querySelector<HTMLSelectElement>("[data-financeiro-company]");
-  const companyId = readSelectedCompany();
-
-  if (!select) {
-    return false;
-  }
-
-  select.disabled = true;
-  select.replaceChildren(new Option("Carregando empresas...", ""));
-  setCompanyStatus("Carregando empresas...");
-
-  const { data: userData, error: authError } = await supabase.auth.getUser();
-
-  if (authError || !userData.user) {
-    select.replaceChildren(new Option("Sessao necessaria", ""));
-    setCompanyStatus("Entre novamente para carregar as empresas.", "error");
-    return false;
-  }
-
-  const { data, error } = await supabase
-    .from("companies")
-    .select("id, name, is_active")
-    .eq("is_active", true)
-    .order("name", { ascending: true });
-
-  if (error) {
-    console.error("Erro ao carregar empresas:", error.message);
-    select.replaceChildren(new Option("Erro ao carregar empresas", ""));
-    setCompanyStatus(
-      "Nao foi possivel carregar as empresas. Verifique sua permissao de acesso.",
-      "error"
-    );
-    return false;
-  }
-
-  const companies = (data ?? []) as Company[];
-
-  if (!companies.length) {
-    select.replaceChildren(new Option("Nenhuma empresa ativa", ""));
-    setCompanyStatus("Nenhuma empresa ativa foi encontrada para seu usuario.");
-    return true;
-  }
-
-  select.replaceChildren(new Option("Selecione uma empresa", ""));
-  companies.forEach((company) => {
-    select.append(new Option(company.name, company.id));
-  });
-
-  if (companyId && companies.some((company) => company.id === companyId)) {
-    select.value = companyId;
-    setCompanyStatus("");
-  } else if (companyId) {
-    select.append(new Option("Empresa selecionada indisponivel", companyId));
-    select.value = companyId;
-    setCompanyStatus(
-      "A empresa selecionada nao esta ativa ou nao pode ser acessada pelo seu usuario.",
-      "error"
-    );
-  } else {
-    setCompanyStatus("");
-  }
-
-  select.disabled = false;
-  select.addEventListener("change", () => navigateToCompany(select.value), { once: true });
-  return true;
 }
 
 function updateViewLinks() {
@@ -429,8 +332,9 @@ function updateMonthlySummary(
   metrics: MonthlyFinancialMetrics | null,
   transactionSummary: TransactionMonthlySummary
 ) {
-  const revenue = getReliableRevenue(metrics, transactionSummary);
-  const expenses = getReliableExpenses(metrics, transactionSummary);
+  const overview = resolveFinancialOverview(metrics, transactionSummary);
+  const revenue = overview.revenue;
+  const expenses = overview.expenses;
 
   setValue("monthly_revenue", formatCurrency(revenue));
   setValue("monthly_expenses", formatCurrency(expenses));
@@ -438,6 +342,23 @@ function updateMonthlySummary(
   setValue("revenue_expense_revenue", formatCurrency(revenue));
   setValue("revenue_expense_expenses", formatCurrency(expenses));
   setValue("revenue_expense_net_profit", formatCurrency(metrics?.net_profit));
+
+  const status = document.querySelector<HTMLElement>("[data-financeiro-summary-status]");
+  if (status) {
+    status.textContent = getFinancialDataMessage(metrics);
+    status.dataset.state = metrics?.data_state ?? "missing";
+  }
+}
+
+function createEmptyTransactionSummaries(periods: FinancialPeriod[]) {
+  return periods.map((period) => ({
+    ...period,
+    incomeTotal: null,
+    incomeCount: 0,
+    expenseTotal: null,
+    expenseCount: 0,
+    transactionCount: 0,
+  }));
 }
 
 function updateReceivablesUnavailable() {
@@ -623,73 +544,57 @@ export async function loadFinanceiroPage() {
   updateReviewLink();
   bindOperationalFilters();
 
-  let companiesLoaded = false;
-
   try {
-    companiesLoaded = await loadCompanies();
-  } catch (error) {
-    console.error(
-      "Erro inesperado ao carregar empresas:",
-      error instanceof Error ? error.message : error
-    );
-    setCompanyStatus(
-      "Nao foi possivel carregar as empresas. Tente novamente.",
-      "error"
-    );
-    document
-      .querySelector<HTMLSelectElement>("[data-financeiro-company]")
-      ?.replaceChildren(new Option("Erro ao carregar empresas", ""));
-  }
-
-  if (!companiesLoaded) {
-    showLoadError();
-    return;
-  }
-
-  try {
-    const periods = await getAvailableFinancialPeriods();
-    const selectedPeriod = readSelectedPeriod() ?? periods[0] ?? readCurrentPeriod();
     const companyId = readSelectedCompany();
+    const periods = await getAvailableFinancialPeriods(companyId);
+    const selectedPeriod = readSelectedPeriod() ?? periods[0] ?? readCurrentPeriod();
     const { startDate, endDate } = getMonthRange(selectedPeriod.year, selectedPeriod.month);
 
     preservePeriodInUrl(selectedPeriod);
     updateViewLinks();
     updateReviewLink();
 
-    // The consolidated metric tables currently have no company_id relationship.
-    // Never present those legacy, unscoped values as belonging to a selected company.
-    const metricsPromise = companyId
-      ? Promise.resolve(null)
-      : getMonthlyFinancialMetrics(selectedPeriod.year, selectedPeriod.month);
-    const historyPromise = companyId
-      ? Promise.resolve([] as MonthlyFinancialMetrics[])
-      : getFinancialMetricHistory(selectedPeriod.year, selectedPeriod.month, 6);
+    const metricsPromise = getMonthlyFinancialMetrics(
+      selectedPeriod.year,
+      selectedPeriod.month,
+      companyId
+    );
+    const historyPromise = getFinancialMetricHistory(
+      selectedPeriod.year,
+      selectedPeriod.month,
+      6,
+      companyId
+    );
 
     const [metrics, history, transactions, transactionSummary] = await Promise.all([
       metricsPromise,
       historyPromise,
-      getTransactions({
-        companyId,
-        startDate,
-        endDate,
-      }),
-      getTransactionMonthlySummary(selectedPeriod.year, selectedPeriod.month, companyId),
+      companyId
+        ? getTransactions({ companyId, startDate, endDate })
+        : Promise.resolve([]),
+      companyId
+        ? getTransactionMonthlySummary(selectedPeriod.year, selectedPeriod.month, companyId)
+        : Promise.resolve({
+            incomeTotal: null,
+            incomeCount: 0,
+            expenseTotal: null,
+            expenseCount: 0,
+            transactionCount: 0,
+          }),
       loadUnavailableReceivables(selectedPeriod, companyId),
       loadUnavailablePayables(selectedPeriod, companyId),
     ]);
     const chartPeriods = history.length ? history : [selectedPeriod];
-    const transactionHistory = await getTransactionMonthlySummaries(chartPeriods, companyId);
+    const transactionHistory = companyId
+      ? await getTransactionMonthlySummaries(chartPeriods, companyId)
+      : createEmptyTransactionSummaries(chartPeriods);
 
     state.transactions = transactions;
     fillTransactionCategoryFilter(transactions);
     renderTransactionsTable();
     updateMonthlySummary(metrics, transactionSummary);
     updateTransactionCharts(chartPeriods, transactionHistory, history);
-    setFinancialDataStatus(
-      companyId && !metrics
-        ? "Sem dados financeiros consolidados para esta empresa"
-        : ""
-    );
+    setFinancialDataStatus(getFinancialDataMessage(metrics));
   } catch (error) {
     console.error(
       "Erro ao carregar financeiro:",

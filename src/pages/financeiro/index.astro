@@ -1,6 +1,7 @@
 ---
 import AccountSummaryCard from "../../components/financial/AccountSummaryCard.astro";
 import CashFlowChart from "../../components/financial/CashFlowChart.astro";
+import FinancialCompanySelect from "../../components/financial/FinancialCompanySelect.astro";
 import FinancialPeriodSelect from "../../components/financial/FinancialPeriodSelect.astro";
 import MonthlySummaryCard from "../../components/financial/MonthlySummaryCard.astro";
 import RevenueExpenseChart from "../../components/financial/RevenueExpenseChart.astro";
@@ -16,13 +17,7 @@ import "../../styles/pages/financial.scss";
     <div class="financeiro-page__toolbar" aria-label="Controles financeiros">
       <FinancialPeriodSelect targetPath="/financeiro" shortYear />
 
-      <label class="financeiro-company-select">
-        <span>Empresa</span>
-        <select data-financeiro-company aria-label="Selecionar empresa">
-          <option>Carregando empresas...</option>
-        </select>
-        <small data-financeiro-company-status aria-live="polite" hidden></small>
-      </label>
+      <FinancialCompanySelect targetPath="/financeiro" />
 
     </div>
 

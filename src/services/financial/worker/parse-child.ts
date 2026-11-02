@@ -30,7 +30,7 @@ function sendReply(reply: ParseReply) {
       reject(new Error("Canal IPC indisponível."));
       return;
     }
-    process.send(reply, (error) => {
+    process.send(reply, (error: Error | null) => {
       if (error) reject(error);
       else resolve();
     });

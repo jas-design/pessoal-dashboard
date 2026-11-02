@@ -1,17 +1,13 @@
 ---
 import DashboardLayout from "../layouts/DashboardLayout.astro";
-import NotificationActions from "../components/notifications/NotificationActions.astro";
-import { getNotifications } from "../services/notifications/notifications";
 import "../styles/pages/notificacoes.scss";
-
-const notifications = await getNotifications(50);
 ---
 
 <DashboardLayout
   title="Notificações"
   subtitle="Acompanhe alertas do sistema, automações e integrações."
 >
-  <section class="page-card">
+  <section class="page-card notifications-page" data-notifications-page aria-busy="true">
     <div class="page-card__header">
       <div>
         <h2>Central de notificações</h2>
@@ -19,49 +15,50 @@ const notifications = await getNotifications(50);
       </div>
     </div>
 
-    <div class="table">
-      <div class="table__row table__row--head table__row--5">
-        <span>Título</span>
-        <span>Tipo</span>
-        <span>Status</span>
-        <span>Data</span>
-        <span>Ação</span>
+    <div class="notifications-state" data-notifications-loading role="status">
+      <span class="notifications-state__loader" aria-hidden="true"></span>
+      <div>
+        <h3>Carregando notificações</h3>
+        <p>Aguarde enquanto confirmamos sua sessão.</p>
       </div>
-
-      {
-        notifications.length === 0 ? (
-          <div class="empty-state">
-            <div>
-              <h3>Nenhuma notificação encontrada</h3>
-              <p>Quando houver novos alertas, eles aparecerão aqui.</p>
-            </div>
-          </div>
-        ) : (
-          notifications.map((notification) => (
-            <div class="table__row table__row--5">
-              <span>{notification.title}</span>
-
-              <span>{notification.type}</span>
-
-              <span
-                class={notification.is_read ? "status-success" : "status-error"}
-              >
-                {notification.is_read ? "Lida" : "Não lida"}
-              </span>
-
-              <span>
-                {new Date(notification.created_at).toLocaleString("pt-BR")}
-              </span>
-
-              <span>
-                {!notification.is_read && (
-                  <NotificationActions id={notification.id} />
-                )}
-              </span>
-            </div>
-          ))
-        )
-      }
     </div>
+
+    <div class="notifications-state" data-notifications-unauthenticated hidden>
+      <div>
+        <h3>Sessão não autenticada</h3>
+        <p>Sua sessão pode ter expirado. Entre novamente para consultar as notificações.</p>
+        <a class="button-small" href="/login">Ir para o login</a>
+      </div>
+    </div>
+
+    <div class="notifications-state notifications-state--error" data-notifications-error role="alert" hidden>
+      <div>
+        <h3>Não foi possível carregar as notificações</h3>
+        <p data-notifications-error-message>Tente novamente em alguns instantes.</p>
+        <button class="button-small" type="button" data-notifications-retry>
+          Tentar novamente
+        </button>
+      </div>
+    </div>
+
+    <div class="empty-state" data-notifications-empty hidden>
+      <div>
+        <h3>Nenhuma notificação encontrada</h3>
+        <p>Quando houver novos alertas, eles aparecerão aqui.</p>
+      </div>
+    </div>
+
+    <div class="table notifications-table" data-notifications-table role="table" hidden>
+      <div class="table__row table__row--head table__row--5" role="row">
+        <span role="columnheader">Título</span>
+        <span role="columnheader">Tipo</span>
+        <span role="columnheader">Status</span>
+        <span role="columnheader">Data</span>
+        <span role="columnheader">Ação</span>
+      </div>
+      <div data-notifications-items role="rowgroup"></div>
+    </div>
+
+    <p class="notifications-feedback" data-notifications-feedback role="status" aria-live="polite"></p>
   </section>
 </DashboardLayout>

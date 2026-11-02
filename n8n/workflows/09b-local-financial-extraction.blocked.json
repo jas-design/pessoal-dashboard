@@ -1,0 +1,239 @@
+{
+  "name": "09B - FABIO - Local Financial Extraction (blocked before persistence)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "2dfe4129-cc09-41d0-a426-6db386764101",
+      "name": "Manual trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { localOnly: true, company: { id: '00000000-0000-4000-8000-000000000901', name: 'Empresa Sintética Local' }, document: { id: '00000000-0000-4000-8000-000000000902', fileName: '09b-synthetic-financial-report.xlsx', etag: 'synthetic-local-etag-09b-v1' }, periodMonth: '2026-09' } }];"
+      },
+      "id": "2dfe4129-cc09-41d0-a426-6db386764102",
+      "name": "Define synthetic local identity",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "fileSelector": "/fixtures/09b-synthetic-financial-report.xlsx",
+        "options": {}
+      },
+      "id": "2dfe4129-cc09-41d0-a426-6db386764103",
+      "name": "Load synthetic XLSX",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst input = item.json;\nconst uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-8[0-9a-f]{3}-[0-9a-f]{12}$/i;\nif (input.localOnly !== true || !uuid.test(String(input.company?.id ?? '')) || !uuid.test(String(input.document?.id ?? '')) || !String(input.document?.fileName ?? '').startsWith('09b-synthetic-') || !String(input.document?.etag ?? '').startsWith('synthetic-local-') || !/^\\d{4}-(0[1-9]|1[0-2])$/.test(String(input.periodMonth ?? '')) || !item.binary?.data) {\n  throw new Error('synthetic_input_not_eligible');\n}\nreturn [item];"
+      },
+      "id": "2dfe4129-cc09-41d0-a426-6db386764104",
+      "name": "Validate synthetic eligibility",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://financial-xlsx-worker:8787/v1/extractions/xlsx",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            },
+            {
+              "name": "X-Financial-Mapping-Id",
+              "value": "kawana-management-report"
+            },
+            {
+              "name": "X-Financial-Mapping-Version",
+              "value": "1"
+            },
+            {
+              "name": "X-Financial-Company-Id",
+              "value": "={{ $json.company.id }}"
+            },
+            {
+              "name": "X-Financial-Company-Name",
+              "value": "={{ encodeURIComponent($json.company.name) }}"
+            },
+            {
+              "name": "X-Financial-Document-Id",
+              "value": "={{ $json.document.id }}"
+            },
+            {
+              "name": "X-Financial-Document-Name",
+              "value": "={{ encodeURIComponent($json.document.fileName) }}"
+            },
+            {
+              "name": "X-Financial-Document-Etag",
+              "value": "={{ $json.document.etag }}"
+            },
+            {
+              "name": "X-Financial-Period-Month",
+              "value": "={{ $json.periodMonth }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": false,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 40000
+        }
+      },
+      "id": "2dfe4129-cc09-41d0-a426-6db386764105",
+      "name": "Invoke private XLSX worker",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SELECT_LOCAL_WORKER_CREDENTIAL_AFTER_IMPORT",
+          "name": "LOCAL_ONLY_FINANCIAL_XLSX_WORKER"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const extraction = $input.first().json;\nconst expected = { companyId: '00000000-0000-4000-8000-000000000901', documentId: '00000000-0000-4000-8000-000000000902', sourceEtag: 'synthetic-local-etag-09b-v1' };\nif (extraction.schemaVersion !== 'financial-extraction.v1' || extraction.status !== 'needs_review' || extraction.publishable !== false) throw new Error('invalid_extraction_contract');\nif (extraction.metadata?.company?.id !== expected.companyId || extraction.metadata?.document?.id !== expected.documentId || extraction.metadata?.document?.etag !== expected.sourceEtag) throw new Error('extraction_identity_mismatch');\nif (!Array.isArray(extraction.facts) || !Array.isArray(extraction.bankTransactions)) throw new Error('invalid_extraction_payload');\nconst keys = new Set();\nfor (const fact of extraction.facts) {\n  if (!fact.logicalKey || keys.has(fact.logicalKey)) throw new Error('invalid_or_duplicate_logical_key');\n  if (fact.companyId !== expected.companyId || fact.documentId !== expected.documentId || fact.sourceEtag !== expected.sourceEtag) throw new Error('fact_identity_mismatch');\n  keys.add(fact.logicalKey);\n}\nconst supported = new Set(['revenue', 'expense', 'net_result', 'cash_available']);\nconst facts = extraction.facts.filter((fact) => fact.includedInConsolidatedKpi === true && fact.aggregationLevel === 'canonical' && supported.has(fact.metricCode));\nconst available = new Set(facts.map((fact) => fact.metricCode));\nconst missing = [...supported].filter((metric) => !available.has(metric));\nif (missing.length) throw new Error('missing_required_canonical_fact');\nreturn [{ json: { status: 'needs_review', publishable: false, synthetic: true, supportedFactCount: facts.length, deferredFactCount: extraction.facts.length - facts.length, deferredBankTransactionCount: extraction.bankTransactions.length, uniqueLogicalKeyCount: keys.size, persistenceBlocked: true, blockerCode: 'existing_rpc_contract_incompatible' } }];"
+      },
+      "id": "2dfe4129-cc09-41d0-a426-6db386764106",
+      "name": "Validate and map canonical facts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "errorMessage": "existing_rpc_contract_incompatible: persistence intentionally blocked; no Supabase write was attempted"
+      },
+      "id": "2dfe4129-cc09-41d0-a426-6db386764107",
+      "name": "Stop before incompatible persistence",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        1440,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Manual trigger": {
+      "main": [
+        [
+          {
+            "node": "Define synthetic local identity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Define synthetic local identity": {
+      "main": [
+        [
+          {
+            "node": "Load synthetic XLSX",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load synthetic XLSX": {
+      "main": [
+        [
+          {
+            "node": "Validate synthetic eligibility",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate synthetic eligibility": {
+      "main": [
+        [
+          {
+            "node": "Invoke private XLSX worker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Invoke private XLSX worker": {
+      "main": [
+        [
+          {
+            "node": "Validate and map canonical facts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate and map canonical facts": {
+      "main": [
+        [
+          {
+            "node": "Stop before incompatible persistence",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "2dfe4129-cc09-41d0-a426-6db386764109",
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "localOnly": true,
+    "persistenceBlocked": true,
+    "contractVersion": "09B.1"
+  },
+  "tags": []
+}

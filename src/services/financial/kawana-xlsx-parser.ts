@@ -547,7 +547,10 @@ export async function parseKawanaWorkbook(
   context: ParserContext,
 ): Promise<KawanaParseResult> {
   const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(Buffer.from(input));
+  const workbookBuffer = input instanceof ArrayBuffer
+    ? input
+    : Uint8Array.from(input).buffer;
+  await workbook.xlsx.load(workbookBuffer);
   const parserContext = {
     ...context,
     expectedPeriod: context.expectedPeriod ?? detectReportPeriod(workbook) ?? "2026-09",

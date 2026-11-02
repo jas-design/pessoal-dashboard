@@ -66,7 +66,13 @@
     display: grid;
     place-items: center;
 
-    span {
+    &:hover,
+    &:focus-visible {
+      border-color: var(--input-focus);
+      color: var(--color-primary);
+    }
+
+    [data-notifications-unread-count] {
       position: absolute;
       top: -6px;
       right: -6px;
@@ -82,6 +88,10 @@
       font-size: 11px;
       font-weight: 900;
     }
+  }
+
+  &__notification-icon {
+    line-height: 1;
   }
 
   &__avatar {
