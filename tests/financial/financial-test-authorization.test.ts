@@ -16,6 +16,22 @@ const productionReviewMigrationPath = path.join(
   repositoryRoot,
   "supabase/migrations/20261016121000_secure_financial_review_access.sql"
 );
+const reviewServicePath = path.join(
+  repositoryRoot,
+  "src/services/financial/review.ts"
+);
+const reviewScriptPath = path.join(
+  repositoryRoot,
+  "src/scripts/financial/review-page.ts"
+);
+const reviewComponentPath = path.join(
+  repositoryRoot,
+  "src/components/financial/FinancialReviewQueue.astro"
+);
+const kawanaReviewAccessPath = path.join(
+  repositoryRoot,
+  "scripts/supabase/11f-kawana-financial-review-access.sql"
+);
 
 test("contrato operacional continua bloqueando documentos TESTE_", async () => {
   const migration = await readFile(productionReviewMigrationPath, "utf8");
@@ -89,4 +105,48 @@ test("scripts locais nao escrevem nos consolidados legados", async () => {
 
   assert.doesNotMatch(authorization, unsafeLegacyWrite);
   assert.doesNotMatch(validation, unsafeLegacyWrite);
+});
+
+test("frontend respeita capacidades retornadas pela fila de revisao", async () => {
+  const service = await readFile(reviewServicePath, "utf8");
+  const script = await readFile(reviewScriptPath, "utf8");
+
+  assert.match(service, /can_decide: boolean/);
+  assert.match(service, /can_classify: boolean/);
+  assert.match(service, /typeof row\.can_decide === "boolean"/);
+  assert.match(service, /typeof row\.can_classify === "boolean"/);
+  assert.match(script, /row\.can_classify && row\.source_usage_role !== "primary"/);
+  assert.match(script, /row\.can_decide && row\.source_usage_role === "primary"/);
+  assert.match(script, /setFinanceReviewDocumentRole\(row\.document_id, "primary"/);
+  assert.match(script, /decideFinanceReview\(row, action, normalizedReason\)/);
+});
+
+test("revisao exige confirmacao e nunca publica pelo navegador", async () => {
+  const service = await readFile(reviewServicePath, "utf8");
+  const script = await readFile(reviewScriptPath, "utf8");
+  const component = await readFile(reviewComponentPath, "utf8");
+  const browserReviewCode = `${service}\n${script}\n${component}`;
+
+  assert.match(component, /data-review-action-dialog/);
+  assert.match(component, /data-review-action-reason/);
+  assert.match(component, /minlength="8"/);
+  assert.match(component, /maxlength="500"/);
+  assert.match(script, /normalizedReason\.length < 8/);
+  assert.match(script, /A aprovação será auditada, mas não publicará/);
+  assert.doesNotMatch(browserReviewCode, /finance_publish_monthly_metrics/);
+  assert.doesNotMatch(browserReviewCode, /SUPABASE_SERVICE_ROLE_KEY/);
+});
+
+test("acesso operacional da Kawana e empresarial, minimo e protegido", async () => {
+  const sql = await readFile(kawanaReviewAccessPath, "utf8");
+
+  assert.match(sql, /^--[\s\S]*\bbegin;/i);
+  assert.match(sql, /v_candidate_count <> 1/);
+  assert.match(sql, /profile\.status = 'active'/);
+  assert.match(sql, /profile\.role = 'admin'/);
+  assert.match(sql, /insert into public\.company_members/i);
+  assert.match(sql, /'admin'/);
+  assert.match(sql, /\bcommit;\s*$/i);
+  assert.doesNotMatch(sql, /financial_extracted_rows/);
+  assert.doesNotMatch(sql, /finance_review_decide|finance_publish_monthly_metrics/);
 });

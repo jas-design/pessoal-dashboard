@@ -1,5 +1,8 @@
 import { getPayables, getPayableSummary } from "./payables";
-import { formatMonthYear } from "./period-format";
+import {
+  formatMonthYear,
+  resolveAvailableFinancialPeriod,
+} from "./period-format";
 import { getReceivables, getReceivableSummary } from "./receivables";
 import {
   getAvailableFinancialPeriods,
@@ -116,10 +119,13 @@ function getMonthRange(year: number, month: number) {
   return { startDate, endDate };
 }
 
-function preservePeriodInUrl(period: FinancialPeriod) {
+function synchronizePeriodInUrl(period: FinancialPeriod) {
   const url = new URL(window.location.href);
 
-  if (url.searchParams.get("year") && url.searchParams.get("month")) {
+  if (
+    url.searchParams.get("year") === String(period.year)
+    && url.searchParams.get("month") === String(period.month)
+  ) {
     return;
   }
 
@@ -547,10 +553,14 @@ export async function loadFinanceiroPage() {
   try {
     const companyId = readSelectedCompany();
     const periods = await getAvailableFinancialPeriods(companyId);
-    const selectedPeriod = readSelectedPeriod() ?? periods[0] ?? readCurrentPeriod();
+    const selectedPeriod = resolveAvailableFinancialPeriod(
+      periods,
+      readSelectedPeriod(),
+      readCurrentPeriod()
+    );
     const { startDate, endDate } = getMonthRange(selectedPeriod.year, selectedPeriod.month);
 
-    preservePeriodInUrl(selectedPeriod);
+    synchronizePeriodInUrl(selectedPeriod);
     updateViewLinks();
     updateReviewLink();
 

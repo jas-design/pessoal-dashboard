@@ -8,6 +8,7 @@ import {
   resolveFinancialOverview,
 } from "../../src/services/financial/financial-calculations";
 import type { MonthlyFinancialMetrics } from "../../src/services/financial/monthly-metrics";
+import { resolveAvailableFinancialPeriod } from "../../src/services/financial/period-format";
 
 function metrics(
   overrides: Partial<MonthlyFinancialMetrics> = {},
@@ -103,4 +104,26 @@ test("Dashboard e Financeiro usam o mesmo resolvedor financeiro", async () => {
 
   assert.match(dashboard, /resolveFinancialOverview\(metrics\)/);
   assert.match(financeiro, /resolveFinancialOverview\(metrics, transactionSummary\)/);
+  assert.match(
+    dashboard,
+    /resolveAvailableFinancialPeriod\(periods, readPeriodFromUrl\(\)/,
+  );
+  assert.match(
+    financeiro,
+    /resolveAvailableFinancialPeriod\(\s*periods,\s*readSelectedPeriod\(\)/,
+  );
+});
+
+test("Dashboard e Financeiro resolvem a mesma competencia publicada", () => {
+  const publishedPeriods = [{ year: 2026, month: 9 }];
+  const staleUrlPeriod = { year: 2026, month: 8 };
+
+  assert.deepEqual(
+    resolveAvailableFinancialPeriod(publishedPeriods, staleUrlPeriod),
+    { year: 2026, month: 9 },
+  );
+  assert.deepEqual(
+    resolveAvailableFinancialPeriod(publishedPeriods, { year: 2026, month: 9 }),
+    { year: 2026, month: 9 },
+  );
 });

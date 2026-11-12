@@ -1,14 +1,33 @@
 import ExcelJS, { type Cell, type Worksheet } from "exceljs";
 
 export const KAWANA_PARSER_VERSION = "06A.1";
+export const KAWANA_PARSER_V2_VERSION = "12A.2";
 
-const EXPECTED_SHEETS = [
+const expectedSheets = (year: number) => [
   "CAPA",
   "Resumo",
-  "Fluxo de Caixa 2026",
+  `Fluxo de Caixa ${year}`,
   "ATIVO X PASSIVO KWN",
   "ATIVOS KWN",
   "PASSIVO KWN",
+  "RECEITAS KWN",
+  "DESPESAS KWN",
+  "Itaú Kawana",
+  "Bradesco Invest Fácil Kawana",
+  "Bradesco Kawana",
+  "Caixa Kawana",
+] as const;
+
+const EXPECTED_SHEETS = expectedSheets(2026);
+
+const expectedConsolidatedSheets = (year: number) => [
+  "CAPA",
+  "RESUMO KWM",
+  `Fluxo de Caixa ${year}`,
+  "ATIVO X PASSIVO KWN",
+  "ATIVOS KWN",
+  "PASSIVO KWN",
+  "RECEITAS X DESPESAS KWN",
   "RECEITAS KWN",
   "DESPESAS KWN",
   "Itaú Kawana",
@@ -26,6 +45,27 @@ const EXPENSE_MONTH_COLUMNS = [
   ["D", 1], ["F", 2], ["H", 3], ["J", 4], ["L", 5],
   ["N", 6], ["P", 7], ["R", 8], ["T", 9],
 ] as const;
+
+const ALL_MONTH_COLUMNS = [
+  ...MONTH_COLUMNS,
+  ["L", 10], ["M", 11], ["N", 12],
+] as const;
+
+const ALL_EXPENSE_MONTH_COLUMNS = [
+  ...EXPENSE_MONTH_COLUMNS,
+  ["V", 10], ["X", 11], ["Z", 12],
+] as const;
+
+type MonthColumn = readonly [string, number];
+
+type ParserConfiguration = {
+  parserVersion: string;
+  requireExpectedPeriod: boolean;
+  canonicalPeriodOnly: boolean;
+  strictStructure: boolean;
+  monthColumns: readonly MonthColumn[];
+  expenseMonthColumns: readonly MonthColumn[];
+};
 
 const BANK_SHEETS = [
   "Itaú Kawana",
@@ -266,12 +306,18 @@ function cellText(worksheet: Worksheet, address: string) {
 }
 
 function detectReportPeriod(workbook: ExcelJS.Workbook) {
-  const summary = findSheet(workbook, "Resumo");
-  if (!summary) return null;
-  const title = cellText(summary, "A1");
-  const dates = [...title.matchAll(/(\d{2})\/(\d{2})\/(\d{4})/g)];
-  const lastDate = dates.at(-1);
-  return lastDate ? monthPeriod(Number(lastDate[3]), Number(lastDate[2])) : null;
+  const candidates = [
+    ["Resumo", "A1"],
+    ["RESUMO KWM", "A2"],
+  ] as const;
+  for (const [sheetName, address] of candidates) {
+    const summary = findSheet(workbook, sheetName);
+    if (!summary) continue;
+    const dates = [...cellText(summary, address).matchAll(/(\d{2})\/(\d{2})\/(\d{4})/g)];
+    const lastDate = dates.at(-1);
+    if (lastDate) return monthPeriod(Number(lastDate[3]), Number(lastDate[2]));
+  }
+  return null;
 }
 
 function periodFromValue(value: unknown) {
@@ -329,7 +375,123 @@ function addCellFact(
   return true;
 }
 
-function parseSummary(ws: Worksheet, context: ParserContext, facts: FinancialFact[], seen: Set<string>) {
+function requireCellText(worksheet: Worksheet, address: string, expected: string) {
+  if (normalizeSheetName(cellText(worksheet, address)) !== normalizeSheetName(expected)) {
+    throw new Error(`A origem ${worksheet.name.trim()}!${address} não possui o rótulo esperado.`);
+  }
+}
+
+function requireCellFact(
+  facts: FinancialFact[],
+  seenKeys: Set<string>,
+  context: ParserContext,
+  worksheet: Worksheet,
+  address: string,
+  input: FactInput,
+) {
+  if (!readNumericCell(worksheet.getCell(address))) {
+    throw new Error(`A origem ${worksheet.name.trim()}!${address} não possui valor numérico.`);
+  }
+  if (!addCellFact(facts, seenKeys, context, worksheet, address, input)) {
+    throw new Error(`A origem ${worksheet.name.trim()}!${address} foi extraída mais de uma vez.`);
+  }
+}
+
+function parseConsolidatedCanonicalFacts(
+  summary: Worksheet,
+  combined: Worksheet,
+  context: ParserContext,
+  facts: FinancialFact[],
+  seen: Set<string>,
+) {
+  requireCellText(summary, "A10", "TOTAL");
+  requireCellText(combined, "A6", "Resultado");
+  requireCellText(combined, "A8", "Despesa");
+  requireCellText(combined, "A23", "Receita");
+
+  const expense = readNumericCell(combined.getCell("B8"));
+  if (!expense || expense.value >= 0) {
+    throw new Error("A despesa consolidada deve possuir sinal original negativo.");
+  }
+
+  const periodMonth = context.expectedPeriod!;
+  requireCellFact(facts, seen, context, summary, "B10", {
+    periodMonth, metricCode: "cash_available", indicator: "Disponibilidade",
+    category: "balance", sourceScope: "business", accountingBasis: "cash",
+    includedInConsolidatedKpi: true, aggregationLevel: "canonical",
+  });
+  requireCellFact(facts, seen, context, combined, "B23", {
+    periodMonth, metricCode: "revenue", indicator: "Receitas realizadas",
+    category: "realized", sourceScope: "business", accountingBasis: "unspecified",
+    includedInConsolidatedKpi: true, aggregationLevel: "canonical",
+  });
+  requireCellFact(facts, seen, context, combined, "B8", {
+    periodMonth, metricCode: "expense", indicator: "Despesas realizadas",
+    category: "realized", sourceScope: "business", accountingBasis: "unspecified",
+    includedInConsolidatedKpi: true, aggregationLevel: "canonical", canonicalTransform: Math.abs,
+  });
+  requireCellFact(facts, seen, context, combined, "B6", {
+    periodMonth, metricCode: "net_result", indicator: "Resultado realizado",
+    category: "realized", sourceScope: "business", accountingBasis: "unspecified",
+    includedInConsolidatedKpi: true, aggregationLevel: "canonical",
+  });
+
+  for (let row = 5; row <= 8; row += 1) {
+    const label = cellText(summary, `A${row}`) || `Conta ${row - 4}`;
+    requireCellFact(facts, seen, context, summary, `B${row}`, {
+      periodMonth, metricCode: `bank_balance_${slug(label)}`, indicator: `Saldo bancário: ${label}`,
+      category: "balance", sourceScope: "pending_review", accountingBasis: "cash",
+      includedInConsolidatedKpi: false, aggregationLevel: "component",
+    });
+  }
+}
+
+function parseSinglePeriodDetails(
+  worksheet: Worksheet,
+  context: ParserContext,
+  facts: FinancialFact[],
+  seen: Set<string>,
+  kind: "revenue" | "expense",
+) {
+  for (let row = 7; row <= worksheet.rowCount; row += 1) {
+    const label = cellText(worksheet, `A${row}`);
+    if (!label || !readNumericCell(worksheet.getCell(`B${row}`))) continue;
+    addCellFact(facts, seen, context, worksheet, `B${row}`, {
+      periodMonth: context.expectedPeriod!, metricCode: `${kind}_detail_${slug(label)}_${row}`,
+      indicator: label, category: "realized", sourceScope: "pending_review",
+      accountingBasis: "unspecified", includedInConsolidatedKpi: false,
+      aggregationLevel: "supporting_detail", canonicalTransform: kind === "expense" ? Math.abs : undefined,
+    });
+  }
+}
+
+function parseSinglePeriodEquity(
+  worksheet: Worksheet,
+  context: ParserContext,
+  facts: FinancialFact[],
+  seen: Set<string>,
+  kind: "asset" | "liability",
+) {
+  for (let row = 4; row <= worksheet.rowCount; row += 1) {
+    const label = cellText(worksheet, `A${row}`);
+    if (!label || !readNumericCell(worksheet.getCell(`B${row}`))) continue;
+    addCellFact(facts, seen, context, worksheet, `B${row}`, {
+      periodMonth: context.expectedPeriod!,
+      metricCode: `${kind}_${row === 4 ? "total" : "detail"}_${slug(label)}_${row}`,
+      indicator: label, category: "equity", sourceScope: "pending_review",
+      accountingBasis: "unspecified", includedInConsolidatedKpi: false,
+      aggregationLevel: "supporting_detail",
+    });
+  }
+}
+
+function parseSummary(
+  ws: Worksheet,
+  context: ParserContext,
+  facts: FinancialFact[],
+  seen: Set<string>,
+  configuration: ParserConfiguration,
+) {
   const year = Number(context.expectedPeriod?.slice(0, 4) ?? "2026");
   const rows = [
     [85, "revenue", "Receitas realizadas"],
@@ -337,11 +499,17 @@ function parseSummary(ws: Worksheet, context: ParserContext, facts: FinancialFac
     [66, "net_result", "Resultado realizado"],
   ] as const;
   for (const [row, code, indicator] of rows) {
-    for (const [column, month] of MONTH_COLUMNS) {
+    for (const [column, month] of configuration.monthColumns) {
+      const periodMonth = monthPeriod(year, month);
+      const isRequestedPeriod = !configuration.canonicalPeriodOnly
+        || periodMonth === context.expectedPeriod;
       addCellFact(facts, seen, context, ws, `${column}${row}`, {
-        periodMonth: monthPeriod(year, month), metricCode: code, indicator,
-        category: "realized", sourceScope: "business", accountingBasis: "unspecified",
-        includedInConsolidatedKpi: true, aggregationLevel: "canonical",
+        periodMonth, metricCode: code, indicator,
+        category: "realized",
+        sourceScope: isRequestedPeriod ? "business" : "pending_review",
+        accountingBasis: "unspecified",
+        includedInConsolidatedKpi: isRequestedPeriod,
+        aggregationLevel: isRequestedPeriod ? "canonical" : "supporting_detail",
       });
     }
   }
@@ -361,12 +529,18 @@ function parseSummary(ws: Worksheet, context: ParserContext, facts: FinancialFac
   }
 }
 
-function parseRevenueDetails(ws: Worksheet, context: ParserContext, facts: FinancialFact[], seen: Set<string>) {
+function parseRevenueDetails(
+  ws: Worksheet,
+  context: ParserContext,
+  facts: FinancialFact[],
+  seen: Set<string>,
+  monthColumns: readonly MonthColumn[],
+) {
   const year = Number(context.expectedPeriod?.slice(0, 4) ?? "2026");
   for (let row = 7; row <= 9; row += 1) {
     const label = cellText(ws, `A${row}`);
     if (!label) continue;
-    for (const [column, month] of MONTH_COLUMNS) {
+    for (const [column, month] of monthColumns) {
       addCellFact(facts, seen, context, ws, `${column}${row}`, {
         periodMonth: monthPeriod(year, month), metricCode: `revenue_detail_${slug(label)}_${row}`,
         indicator: label, category: "realized", sourceScope: "pending_review",
@@ -377,12 +551,18 @@ function parseRevenueDetails(ws: Worksheet, context: ParserContext, facts: Finan
   }
 }
 
-function parseExpenseDetails(ws: Worksheet, context: ParserContext, facts: FinancialFact[], seen: Set<string>) {
+function parseExpenseDetails(
+  ws: Worksheet,
+  context: ParserContext,
+  facts: FinancialFact[],
+  seen: Set<string>,
+  monthColumns: readonly MonthColumn[],
+) {
   const year = Number(context.expectedPeriod?.slice(0, 4) ?? "2026");
   for (let row = 6; row <= 107; row += 1) {
     const label = cellText(ws, `A${row}`);
     if (!label) continue;
-    for (const [column, month] of EXPENSE_MONTH_COLUMNS) {
+    for (const [column, month] of monthColumns) {
       addCellFact(facts, seen, context, ws, `${column}${row}`, {
         periodMonth: monthPeriod(year, month), metricCode: `expense_detail_${slug(label)}_${row}`,
         indicator: label, category: "realized", sourceScope: "pending_review",
@@ -415,11 +595,17 @@ function parseCashFlow(ws: Worksheet, context: ParserContext, facts: FinancialFa
   }
 }
 
-function parseEquitySummary(ws: Worksheet, context: ParserContext, facts: FinancialFact[], seen: Set<string>) {
+function parseEquitySummary(
+  ws: Worksheet,
+  context: ParserContext,
+  facts: FinancialFact[],
+  seen: Set<string>,
+  monthColumns: readonly MonthColumn[],
+) {
   const year = Number(context.expectedPeriod?.slice(0, 4) ?? "2026");
   for (const [row, code] of [[6, "equity_result"], [8, "asset_total"], [10, "liability_total"]] as const) {
     const indicator = cellText(ws, `A${row}`) || code;
-    for (const [column, month] of MONTH_COLUMNS) {
+    for (const [column, month] of monthColumns) {
       addCellFact(facts, seen, context, ws, `${column}${row}`, {
         periodMonth: monthPeriod(year, month), metricCode: code, indicator,
         category: "equity", sourceScope: "pending_review", accountingBasis: "unspecified",
@@ -431,13 +617,13 @@ function parseEquitySummary(ws: Worksheet, context: ParserContext, facts: Financ
 
 function parseEquityDetails(
   ws: Worksheet, context: ParserContext, facts: FinancialFact[], seen: Set<string>,
-  kind: "asset" | "liability",
+  kind: "asset" | "liability", monthColumns: readonly MonthColumn[],
 ) {
   const year = Number(context.expectedPeriod?.slice(0, 4) ?? "2026");
   for (let row = 4; row <= ws.rowCount; row += 1) {
     const label = cellText(ws, `A${row}`);
     if (!label) continue;
-    for (const [column, month] of MONTH_COLUMNS) {
+    for (const [column, month] of monthColumns) {
       addCellFact(facts, seen, context, ws, `${column}${row}`, {
         periodMonth: monthPeriod(year, month),
         metricCode: `${kind}_${row === 4 ? "total" : "detail"}_${slug(label)}_${row}`,
@@ -517,10 +703,18 @@ function reconciliation(code: string, left: number | null, right: number | null,
   return { code, status: Math.abs(difference) <= 1 ? "passed" : "failed", differenceMinor: String(difference), sources };
 }
 
-function buildReconciliations(facts: FinancialFact[]) {
-  const revenue = getFactMinor(facts, "Resumo", "K85");
-  const expense = getFactMinor(facts, "Resumo", "K68");
-  const result = getFactMinor(facts, "Resumo", "K66");
+function buildLegacyReconciliations(
+  facts: FinancialFact[],
+  summaryColumn: string,
+  expenseColumn: string,
+  cashFlowSheet: string,
+) {
+  const revenueAddress = `${summaryColumn}85`;
+  const expenseAddress = `${summaryColumn}68`;
+  const resultAddress = `${summaryColumn}66`;
+  const revenue = getFactMinor(facts, "Resumo", revenueAddress);
+  const expense = getFactMinor(facts, "Resumo", expenseAddress);
+  const result = getFactMinor(facts, "Resumo", resultAddress);
   const cash = getFactMinor(facts, "Resumo", "B4");
   const sum = (values: Array<number | null>, size: number) => values.length === size
     && values.every((value): value is number => value !== null) ? values.reduce((total, value) => total + value, 0) : null;
@@ -529,32 +723,132 @@ function buildReconciliations(facts: FinancialFact[]) {
     .map((fact) => Number(fact.amountMinor));
   return [
     reconciliation("summary_result_equals_revenue_minus_expense", revenue !== null && expense !== null ? revenue - expense : null,
-      result, ["Resumo!K85", "Resumo!K68", "Resumo!K66"]),
-    reconciliation("revenue_detail_matches_summary", getFactMinor(facts, "RECEITAS KWN", "K4"), revenue,
-      ["RECEITAS KWN!K4", "Resumo!K85"]),
-    reconciliation("expense_detail_matches_summary", getFactMinor(facts, "DESPESAS KWN", "T4"), expense,
-      ["DESPESAS KWN!T4", "Resumo!K68"]),
-    reconciliation("cash_flow_balance_matches_summary", getFactMinor(facts, "Fluxo de Caixa 2026", "K10"), cash,
-      ["Fluxo de Caixa 2026!K10", "Resumo!B4"]),
+      result, [`Resumo!${revenueAddress}`, `Resumo!${expenseAddress}`, `Resumo!${resultAddress}`]),
+    reconciliation("revenue_detail_matches_summary", getFactMinor(facts, "RECEITAS KWN", `${summaryColumn}4`), revenue,
+      [`RECEITAS KWN!${summaryColumn}4`, `Resumo!${revenueAddress}`]),
+    reconciliation("expense_detail_matches_summary", getFactMinor(facts, "DESPESAS KWN", `${expenseColumn}4`), expense,
+      [`DESPESAS KWN!${expenseColumn}4`, `Resumo!${expenseAddress}`]),
+    reconciliation("cash_flow_balance_matches_summary", getFactMinor(facts, cashFlowSheet, `${summaryColumn}10`), cash,
+      [`${cashFlowSheet}!${summaryColumn}10`, "Resumo!B4"]),
     reconciliation("summary_bank_components_match_total", sum(bankComponents, 4), cash, ["Resumo!B5:B8", "Resumo!B4"]),
     reconciliation("bank_statement_balances_match_summary", sum(bankStatements, 4), cash,
       ["quatro abas bancárias!saldo final", "Resumo!B4"]),
   ];
 }
 
-export async function parseKawanaWorkbook(
+function buildConsolidatedReconciliations(facts: FinancialFact[]) {
+  const revenue = getFactMinor(facts, "RECEITAS X DESPESAS KWN", "B23");
+  const expense = getFactMinor(facts, "RECEITAS X DESPESAS KWN", "B8");
+  const result = getFactMinor(facts, "RECEITAS X DESPESAS KWN", "B6");
+  const cash = getFactMinor(facts, "RESUMO KWM", "B10");
+  const sum = (values: Array<number | null>, size: number) => values.length === size
+    && values.every((value): value is number => value !== null)
+    ? values.reduce((total, value) => total + value, 0)
+    : null;
+  const bankComponents = ["B5", "B6", "B7", "B8"]
+    .map((address) => getFactMinor(facts, "RESUMO KWM", address));
+  const bankStatements = facts
+    .filter((fact) => fact.metricCode.startsWith("bank_statement_final_balance_"))
+    .map((fact) => Number(fact.amountMinor));
+
+  return [
+    reconciliation(
+      "combined_result_equals_revenue_minus_expense",
+      revenue !== null && expense !== null ? revenue - expense : null,
+      result,
+      [
+        "RECEITAS X DESPESAS KWN!B23",
+        "RECEITAS X DESPESAS KWN!B8",
+        "RECEITAS X DESPESAS KWN!B6",
+      ],
+    ),
+    reconciliation(
+      "revenue_detail_matches_combined",
+      getFactMinor(facts, "RECEITAS KWN", "B6"),
+      revenue,
+      ["RECEITAS KWN!B6", "RECEITAS X DESPESAS KWN!B23"],
+    ),
+    reconciliation(
+      "expense_detail_matches_combined",
+      getFactMinor(facts, "DESPESAS KWN", "B6"),
+      expense,
+      ["DESPESAS KWN!B6", "RECEITAS X DESPESAS KWN!B8"],
+    ),
+    reconciliation(
+      "summary_bank_components_match_total",
+      sum(bankComponents, 4),
+      cash,
+      ["RESUMO KWM!B5:B8", "RESUMO KWM!B10"],
+    ),
+    reconciliation(
+      "bank_statement_balances_match_summary",
+      sum(bankStatements, 4),
+      cash,
+      ["quatro abas bancárias!saldo final", "RESUMO KWM!B10"],
+    ),
+  ];
+}
+
+function validateCanonicalFacts(facts: FinancialFact[], periodMonth: string) {
+  const expectedMetrics = ["revenue", "expense", "net_result", "cash_available"];
+  const canonical = facts.filter((fact) => fact.includedInConsolidatedKpi
+    && fact.aggregationLevel === "canonical"
+    && fact.periodMonth === periodMonth);
+  const counts = new Map<string, number>();
+  canonical.forEach((fact) => counts.set(fact.metricCode, (counts.get(fact.metricCode) ?? 0) + 1));
+  if (canonical.length !== expectedMetrics.length
+    || expectedMetrics.some((metric) => counts.get(metric) !== 1)) {
+    throw new Error("O mapping v2 deve produzir exatamente quatro métricas canônicas distintas.");
+  }
+}
+
+async function parseKawanaWorkbookConfigured(
   input: Buffer | Uint8Array | ArrayBuffer,
   context: ParserContext,
+  configuration: ParserConfiguration,
 ): Promise<KawanaParseResult> {
   const workbook = new ExcelJS.Workbook();
   const workbookBuffer = input instanceof ArrayBuffer
     ? input
     : Uint8Array.from(input).buffer;
   await workbook.xlsx.load(workbookBuffer);
+  if (configuration.requireExpectedPeriod && !context.expectedPeriod) {
+    throw new Error("A competencia e obrigatoria para o mapping v2.");
+  }
+  const detectedPeriod = detectReportPeriod(workbook);
+  if (
+    configuration.requireExpectedPeriod
+    && detectedPeriod !== context.expectedPeriod
+  ) {
+    throw new Error("A competencia declarada no XLSX diverge da competencia autorizada.");
+  }
   const parserContext = {
     ...context,
-    expectedPeriod: context.expectedPeriod ?? detectReportPeriod(workbook) ?? "2026-09",
+    expectedPeriod: context.expectedPeriod ?? detectedPeriod ?? "2026-09",
   };
+  const requestedYear = Number(parserContext.expectedPeriod.slice(0, 4));
+  const requestedMonth = Number(parserContext.expectedPeriod.slice(5, 7));
+  const extractionMonth = configuration.requireExpectedPeriod ? requestedMonth : 9;
+  const requestedMonthColumn = configuration.monthColumns.find(
+    ([, month]) => month === extractionMonth,
+  )?.[0];
+  const requestedExpenseColumn = configuration.expenseMonthColumns.find(
+    ([, month]) => month === extractionMonth,
+  )?.[0];
+  if (!Number.isSafeInteger(requestedYear) || !requestedMonthColumn || !requestedExpenseColumn) {
+    throw new Error("A competencia nao possui colunas configuradas no mapping.");
+  }
+  const cashFlowSheetName = configuration.requireExpectedPeriod
+    ? `Fluxo de Caixa ${requestedYear}`
+    : "Fluxo de Caixa 2026";
+  const consolidatedLayout = configuration.requireExpectedPeriod
+    && (findSheet(workbook, "RESUMO KWM") !== undefined
+      || findSheet(workbook, "RECEITAS X DESPESAS KWN") !== undefined);
+  const requiredSheets = consolidatedLayout
+    ? expectedConsolidatedSheets(requestedYear)
+    : configuration.requireExpectedPeriod
+      ? expectedSheets(requestedYear)
+      : EXPECTED_SHEETS;
   const facts: FinancialFact[] = [];
   const bankTransactions: BankTransaction[] = [];
   const warnings: ValidationWarning[] = [];
@@ -564,41 +858,94 @@ export async function parseKawanaWorkbook(
     if (!addCellFact(facts, seen, parserContext, ws, address, input)) duplicateFactCount += 1;
   };
 
-  const missing = EXPECTED_SHEETS.filter((name) => !findSheet(workbook, name));
-  const unexpected = workbook.worksheets.filter((ws) => !EXPECTED_SHEETS.some((name) =>
+  const missing = requiredSheets.filter((name) => !findSheet(workbook, name));
+  const unexpected = workbook.worksheets.filter((ws) => !requiredSheets.some((name) =>
     normalizeSheetName(name) === normalizeSheetName(ws.name))).map((ws) => ws.name);
-  if (workbook.worksheets.length !== EXPECTED_SHEETS.length || missing.length > 0) {
+  const normalizedSheetNames = workbook.worksheets.map((ws) => normalizeSheetName(ws.name));
+  const duplicateSheetNames = normalizedSheetNames.filter(
+    (name, index) => normalizedSheetNames.indexOf(name) !== index,
+  );
+  const invalidStructure = workbook.worksheets.length !== requiredSheets.length
+    || missing.length > 0
+    || unexpected.length > 0
+    || duplicateSheetNames.length > 0;
+  if (configuration.strictStructure && invalidStructure) {
+    throw new Error("A estrutura de abas do XLSX não corresponde ao mapping v2 autorizado.");
+  }
+  if (invalidStructure) {
     warnings.push({ code: "unexpected_sheet_structure", severity: "error",
-      message: `Esperadas ${EXPECTED_SHEETS.length} abas; encontradas ${workbook.worksheets.length}.`,
-      sources: [...missing.map((name) => `ausente:${name}`), ...unexpected.map((name) => `inesperada:${name}`)] });
+      message: `Esperadas ${requiredSheets.length} abas; encontradas ${workbook.worksheets.length}.`,
+      sources: [
+        ...missing.map((name) => `ausente:${name}`),
+        ...unexpected.map((name) => `inesperada:${name}`),
+        ...duplicateSheetNames.map((name) => `duplicada:${name}`),
+      ] });
   }
 
-  const summary = findSheet(workbook, "Resumo");
-  if (summary) parseSummary(summary, parserContext, facts, seen);
+  const summary = findSheet(workbook, consolidatedLayout ? "RESUMO KWM" : "Resumo");
+  const combined = findSheet(workbook, "RECEITAS X DESPESAS KWN");
+  if (consolidatedLayout) {
+    parseConsolidatedCanonicalFacts(summary!, combined!, parserContext, facts, seen);
+  } else if (summary) {
+    parseSummary(summary, parserContext, facts, seen, configuration);
+  }
   const revenue = findSheet(workbook, "RECEITAS KWN");
   if (revenue) {
-    parseRevenueDetails(revenue, parserContext, facts, seen);
-    addTotal(revenue, "K4", { periodMonth: parserContext.expectedPeriod,
+    if (consolidatedLayout) {
+      parseSinglePeriodDetails(revenue, parserContext, facts, seen, "revenue");
+    } else {
+      parseRevenueDetails(revenue, parserContext, facts, seen, configuration.monthColumns);
+    }
+    addTotal(revenue, consolidatedLayout ? "B6" : `${requestedMonthColumn}4`, { periodMonth: parserContext.expectedPeriod,
       metricCode: "revenue_reconciliation_total", indicator: "Total de receitas para conciliação",
       category: "realized", sourceScope: "pending_review", accountingBasis: "unspecified",
       includedInConsolidatedKpi: false, aggregationLevel: "supporting_detail" });
   }
   const expense = findSheet(workbook, "DESPESAS KWN");
   if (expense) {
-    parseExpenseDetails(expense, parserContext, facts, seen);
-    addTotal(expense, "T4", { periodMonth: parserContext.expectedPeriod,
+    if (consolidatedLayout) {
+      parseSinglePeriodDetails(expense, parserContext, facts, seen, "expense");
+    } else {
+      parseExpenseDetails(expense, parserContext, facts, seen, configuration.expenseMonthColumns);
+    }
+    addTotal(expense, consolidatedLayout ? "B6" : `${requestedExpenseColumn}4`, { periodMonth: parserContext.expectedPeriod,
       metricCode: "expense_reconciliation_total", indicator: "Total de despesas para conciliação",
       category: "realized", sourceScope: "pending_review", accountingBasis: "unspecified",
       includedInConsolidatedKpi: false, aggregationLevel: "supporting_detail", canonicalTransform: Math.abs });
   }
-  const cashFlow = findSheet(workbook, "Fluxo de Caixa 2026");
+  const cashFlow = findSheet(workbook, cashFlowSheetName);
   if (cashFlow) parseCashFlow(cashFlow, parserContext, facts, seen);
   const equity = findSheet(workbook, "ATIVO X PASSIVO KWN");
-  if (equity) parseEquitySummary(equity, parserContext, facts, seen);
+  if (equity) {
+    if (consolidatedLayout) {
+      parseSinglePeriodEquity(equity, parserContext, facts, seen, "asset");
+    } else {
+      parseEquitySummary(equity, parserContext, facts, seen, configuration.monthColumns);
+    }
+  }
   const assets = findSheet(workbook, "ATIVOS KWN");
-  if (assets) parseEquityDetails(assets, parserContext, facts, seen, "asset");
+  if (assets) {
+    if (consolidatedLayout) {
+      parseSinglePeriodEquity(assets, parserContext, facts, seen, "asset");
+    } else {
+      parseEquityDetails(assets, parserContext, facts, seen, "asset", configuration.monthColumns);
+    }
+  }
   const liabilities = findSheet(workbook, "PASSIVO KWN");
-  if (liabilities) parseEquityDetails(liabilities, parserContext, facts, seen, "liability");
+  if (liabilities) {
+    if (consolidatedLayout) {
+      parseSinglePeriodEquity(liabilities, parserContext, facts, seen, "liability");
+    } else {
+      parseEquityDetails(
+        liabilities,
+        parserContext,
+        facts,
+        seen,
+        "liability",
+        configuration.monthColumns,
+      );
+    }
+  }
   for (const name of BANK_SHEETS) {
     const ws = findSheet(workbook, name);
     if (ws) parseBankSheet(ws, parserContext, bankTransactions, facts, seen);
@@ -616,16 +963,26 @@ export async function parseKawanaWorkbook(
     sources: ["ATIVOS KWN", "PASSIVO KWN", ...BANK_SHEETS] });
   warnings.push({ code: "supporting_totals_not_consolidated", severity: "info",
     message: "Totais e detalhes auxiliares foram mantidos para conciliação, sem nova soma nos KPIs consolidados.",
-    sources: ["RECEITAS KWN", "DESPESAS KWN", "Fluxo de Caixa 2026"] });
+    sources: ["RECEITAS KWN", "DESPESAS KWN", cashFlowSheetName] });
 
-  const reconciliations = buildReconciliations(facts);
+  const reconciliations = consolidatedLayout
+    ? buildConsolidatedReconciliations(facts)
+    : buildLegacyReconciliations(
+      facts,
+      requestedMonthColumn,
+      requestedExpenseColumn,
+      cashFlowSheetName,
+    );
   for (const item of reconciliations.filter((entry) => entry.status !== "passed")) {
     warnings.push({ code: `reconciliation_${item.code}`, severity: item.status === "failed" ? "error" : "warning",
       message: item.status === "failed" ? "Conciliação financeira divergente." : "Conciliação financeira indisponível.",
       sources: item.sources });
   }
+  if (configuration.requireExpectedPeriod) {
+    validateCanonicalFacts(facts, parserContext.expectedPeriod);
+  }
   return {
-    schemaVersion: "financial-extraction.v1", parserVersion: KAWANA_PARSER_VERSION,
+    schemaVersion: "financial-extraction.v1", parserVersion: configuration.parserVersion,
     status: "needs_review", publishable: false,
     metadata: { company: parserContext.company, document: parserContext.document,
       periodMonth: parserContext.expectedPeriod, currency: "BRL",
@@ -635,4 +992,32 @@ export async function parseKawanaWorkbook(
     statistics: { factCount: facts.length, bankTransactionCount: bankTransactions.length,
       formulaErrorCount: cellWarnings.errors.length, duplicateFactCount },
   };
+}
+
+export async function parseKawanaWorkbook(
+  input: Buffer | Uint8Array | ArrayBuffer,
+  context: ParserContext,
+) {
+  return parseKawanaWorkbookConfigured(input, context, {
+    parserVersion: KAWANA_PARSER_VERSION,
+    requireExpectedPeriod: false,
+    canonicalPeriodOnly: false,
+    strictStructure: false,
+    monthColumns: MONTH_COLUMNS,
+    expenseMonthColumns: EXPENSE_MONTH_COLUMNS,
+  });
+}
+
+export async function parseKawanaWorkbookV2(
+  input: Buffer | Uint8Array | ArrayBuffer,
+  context: ParserContext,
+) {
+  return parseKawanaWorkbookConfigured(input, context, {
+    parserVersion: KAWANA_PARSER_V2_VERSION,
+    requireExpectedPeriod: true,
+    canonicalPeriodOnly: true,
+    strictStructure: true,
+    monthColumns: ALL_MONTH_COLUMNS,
+    expenseMonthColumns: ALL_EXPENSE_MONTH_COLUMNS,
+  });
 }

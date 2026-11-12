@@ -1,0 +1,344 @@
+{
+  "name": "11D - KAWANA - Real Financial Pilot v2 (manual inactive)",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "11d00000-0000-4000-8000-000000000001",
+      "name": "Manual trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const operationalPreflightApproved = false;\nconst expected = {\n  documentId: '7aa10025-751f-4d8a-947d-5decf1e1dc2d',\n  companyId: '468978dd-6ffa-440e-9465-df966ba093ee',\n  companyName: 'Kawana',\n  fileName: '09.2026 Relatório Gerencial Kawana.xlsx',\n  fileSize: 524760,\n  sourceEtag: String($vars.KAWANA_11D_DOCUMENT_ETAG ?? '').trim(),\n  periodMonth: '2026-09',\n  mappingId: 'kawana-management-report',\n  mappingVersion: '1',\n  maxFileSize: 8388608,\n};\nreturn [{ json: { operationalPreflightApproved, expected } }];"
+      },
+      "id": "11d00000-0000-4000-8000-000000000002",
+      "name": "Define exact real pilot",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "strict", "version": 2 },
+          "conditions": [{
+            "id": "11d00000-0000-4000-8000-000000000101",
+            "leftValue": "={{ $json.operationalPreflightApproved }}",
+            "rightValue": true,
+            "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+          }],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "11d00000-0000-4000-8000-000000000003",
+      "name": "Operational preflight approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [480, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { status: 'blocked', stage: 'preflight', code: 'operational_preflight_required', databaseWriteAttempted: false, realDocumentDownloaded: false } }];"
+      },
+      "id": "11d00000-0000-4000-8000-000000000004",
+      "name": "Return blocked preflight result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 120]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.KAWANA_SUPABASE_URL + '/rest/v1/rpc/finance_claim_document_v2' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Content-Type", "value": "application/json" }] },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ { p_document_id: $('Define exact real pilot').first().json.expected.documentId, p_company_id: $('Define exact real pilot').first().json.expected.companyId, p_source_etag: $('Define exact real pilot').first().json.expected.sourceEtag, p_period_month: $('Define exact real pilot').first().json.expected.periodMonth + '-01' } }}",
+        "options": { "response": { "response": { "fullResponse": true, "neverError": true, "responseFormat": "json" } }, "timeout": 10000 }
+      },
+      "id": "11d00000-0000-4000-8000-000000000005",
+      "name": "Claim exact document v2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, -120],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SELECT_HOSTINGER_SUPABASE_CREDENTIAL_AFTER_IMPORT",
+          "name": "KAWANA_SUPABASE_SERVICE_ROLE"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst expected = $('Define exact real pilot').first().json.expected;\nconst normalizeResponseBody = (rawBody) => {\n  let body = rawBody;\n  if (typeof body === 'string') {\n    try { body = JSON.parse(body); } catch { return null; }\n  }\n  if (Array.isArray(body)) {\n    if (body.length !== 1) return null;\n    [body] = body;\n  }\n  if (body === null || typeof body !== 'object' || Array.isArray(body)) return null;\n  return body;\n};\nconst statusCode = Number(response.statusCode);\nconst uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;\nif (!expected.sourceEtag || expected.periodMonth !== '2026-09') return [{ json: { outcome: 'terminal', status: 'failure', stage: 'claim', code: 'secure_etag_or_period_missing' } }];\nif (!Number.isInteger(statusCode)) return [{ json: { outcome: 'terminal', status: 'failure', stage: 'claim', code: 'claim_response_shape_invalid' } }];\nif (statusCode < 200 || statusCode >= 300) return [{ json: { outcome: 'terminal', status: 'failure', stage: 'claim', code: 'claim_request_failed' } }];\nconst body = normalizeResponseBody(response.body);\nif (!body) return [{ json: { outcome: 'terminal', status: 'failure', stage: 'claim', code: 'claim_response_shape_invalid' } }];\nconst valid = body.has_document === true && body.contract_version === 2 && body.document_id === expected.documentId && body.company_id === expected.companyId && body.company_name === expected.companyName && body.source_etag === expected.sourceEtag && body.file_name === expected.fileName && body.file_size === expected.fileSize && body.extension === 'xlsx' && body.period_month === expected.periodMonth && typeof body.external_drive_id === 'string' && body.external_drive_id.length > 0 && typeof body.external_file_id === 'string' && body.external_file_id.length > 0 && typeof body.source_path === 'string' && body.source_path.startsWith('/drive/root:/Deskboard KPIs/') && uuid.test(String(body.owner_id ?? '')) && uuid.test(String(body.claim_id ?? ''));\nif (!valid) return [{ json: { outcome: 'terminal', status: 'failure', stage: 'claim', code: 'claimed_document_identity_mismatch' } }];\nreturn [{ json: { outcome: 'claimed', expected, claim: body } }];"
+      },
+      "id": "11d00000-0000-4000-8000-000000000006",
+      "name": "Validate exact claim response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, -120]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "strict", "version": 2 },
+          "conditions": [{
+            "id": "11d00000-0000-4000-8000-000000000102",
+            "leftValue": "={{ $json.outcome }}",
+            "rightValue": "claimed",
+            "operator": { "type": "string", "operation": "equals" }
+          }],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "11d00000-0000-4000-8000-000000000007",
+      "name": "Exact document claimed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1200, -120]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { status: $json.status ?? 'failure', stage: $json.stage ?? 'claim', code: $json.code ?? 'claim_failed', publishable: false } }];"
+      },
+      "id": "11d00000-0000-4000-8000-000000000008",
+      "name": "Return sanitized claim failure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1440, 40]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ 'https://graph.microsoft.com/v1.0/drives/' + encodeURIComponent($json.claim.external_drive_id) + '/items/' + encodeURIComponent($json.claim.external_file_id) + '/content' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "microsoftOAuth2Api",
+        "options": { "response": { "response": { "neverError": true, "responseFormat": "file", "outputPropertyName": "data" } }, "timeout": 30000 }
+      },
+      "id": "11d00000-0000-4000-8000-000000000009",
+      "name": "Download exact XLSX from Graph",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1440, -200],
+      "credentials": {
+        "microsoftOAuth2Api": {
+          "id": "SELECT_HOSTINGER_GRAPH_CREDENTIAL_AFTER_IMPORT",
+          "name": "KAWANA_MICROSOFT_GRAPH_READ"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst context = $('Validate exact claim response').first().json;\nconst expected = context.expected;\nconst failure = (code) => [{ json: { outcome: 'terminal', failurePayload: { p_document_id: expected.documentId, p_claim_id: context.claim.claim_id, p_source_etag: expected.sourceEtag, p_status: 'failed', p_rows: [], p_note: code, p_excerpt: null } } }];\nif (!item.binary?.data) return failure('graph_download_missing_binary');\nconst mimeType = String(item.binary.data.mimeType ?? '');\nif (mimeType && mimeType !== 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') return failure('graph_download_invalid_mime');\nif (expected.fileSize < 1 || expected.fileSize > expected.maxFileSize || !expected.fileName.toLowerCase().endsWith('.xlsx')) return failure('document_size_or_extension_invalid');\nreturn [{ json: { ...context, outcome: 'ready' }, binary: item.binary }];"
+      },
+      "id": "11d00000-0000-4000-8000-000000000010",
+      "name": "Validate downloaded XLSX",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1680, -200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "strict", "version": 2 },
+          "conditions": [{
+            "id": "11d00000-0000-4000-8000-000000000103",
+            "leftValue": "={{ $json.outcome }}",
+            "rightValue": "ready",
+            "operator": { "type": "string", "operation": "equals" }
+          }],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "11d00000-0000-4000-8000-000000000011",
+      "name": "Downloaded XLSX eligible?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1920, -200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://financial-xlsx-worker:8787/v1/extractions/xlsx",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
+            { "name": "X-Financial-Mapping-Id", "value": "kawana-management-report" },
+            { "name": "X-Financial-Mapping-Version", "value": "1" },
+            { "name": "X-Financial-Company-Id", "value": "={{ $json.expected.companyId }}" },
+            { "name": "X-Financial-Company-Name", "value": "={{ encodeURIComponent($json.expected.companyName) }}" },
+            { "name": "X-Financial-Document-Id", "value": "={{ $json.expected.documentId }}" },
+            { "name": "X-Financial-Document-Name", "value": "={{ encodeURIComponent($json.expected.fileName) }}" },
+            { "name": "X-Financial-Document-Etag", "value": "={{ $json.expected.sourceEtag }}" },
+            { "name": "X-Financial-External-File-Id", "value": "={{ encodeURIComponent($json.claim.external_file_id) }}" },
+            { "name": "X-Financial-Period-Month", "value": "2026-09" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": { "response": { "response": { "fullResponse": true, "neverError": true, "responseFormat": "json" } }, "timeout": 40000 }
+      },
+      "id": "11d00000-0000-4000-8000-000000000012",
+      "name": "Invoke private XLSX worker",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2160, -280],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SELECT_HOSTINGER_WORKER_CREDENTIAL_AFTER_IMPORT",
+          "name": "KAWANA_FINANCIAL_XLSX_WORKER"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst context = $('Validate downloaded XLSX').first().json;\nconst expected = context.expected;\nconst claim = context.claim;\nconst extraction = response.body;\nconst statusCode = Number(response.statusCode);\nconst requiredSheets = ['CAPA','Resumo','Fluxo de Caixa 2026','ATIVO X PASSIVO KWN','ATIVOS KWN','PASSIVO KWN','RECEITAS KWN','DESPESAS KWN','Itaú Kawana','Bradesco Invest Fácil Kawana','Bradesco Kawana','Caixa Kawana'];\nconst requiredMetrics = ['revenue','expense','net_result','cash_available'];\nconst failure = (code) => [{ json: { outcome: 'terminal', failurePayload: { p_document_id: expected.documentId, p_claim_id: claim.claim_id, p_source_etag: expected.sourceEtag, p_status: 'failed', p_rows: [], p_note: code, p_excerpt: null } } }];\ntry {\n  if (!Number.isInteger(statusCode) || statusCode < 200 || statusCode >= 300) return failure('worker_request_failed');\n  if (extraction?.schemaVersion !== 'financial-extraction.v1' || extraction?.status !== 'needs_review' || extraction?.publishable !== false) throw new Error('invalid_extraction_contract');\n  if (extraction.metadata?.company?.id !== expected.companyId || extraction.metadata?.company?.name !== expected.companyName || extraction.metadata?.document?.id !== expected.documentId || extraction.metadata?.document?.etag !== expected.sourceEtag || extraction.metadata?.document?.fileName !== expected.fileName || extraction.metadata?.periodMonth !== '2026-09') throw new Error('extraction_identity_mismatch');\n  const sheets = extraction.metadata?.sheets;\n  if (!Array.isArray(sheets) || sheets.length !== requiredSheets.length || requiredSheets.some((name) => !sheets.includes(name))) throw new Error('required_sheet_structure_mismatch');\n  if (!Array.isArray(extraction.warnings) || extraction.warnings.some((warning) => warning?.severity === 'error')) throw new Error('extraction_contains_error_warning');\n  if (!Array.isArray(extraction.reconciliations) || extraction.reconciliations.some((item) => item?.status === 'failed')) throw new Error('financial_reconciliation_failed');\n  if (!Array.isArray(extraction.facts) || !Array.isArray(extraction.bankTransactions)) throw new Error('invalid_extraction_payload');\n  const canonical = extraction.facts.filter((fact) => fact?.includedInConsolidatedKpi === true && fact?.aggregationLevel === 'canonical');\n  if (canonical.length !== 4 || new Set(canonical.map((fact) => fact.metricCode)).size !== 4 || requiredMetrics.some((metric) => !canonical.some((fact) => fact.metricCode === metric))) throw new Error('missing_or_duplicate_required_canonical_fact');\n  const logicalKeys = new Set();\n  const rows = canonical.map((fact) => {\n    if (!requiredMetrics.includes(fact.metricCode) || fact.companyId !== expected.companyId || fact.companyName !== expected.companyName || fact.documentId !== expected.documentId || fact.sourceEtag !== expected.sourceEtag || fact.periodMonth !== '2026-09' || fact.currency !== 'BRL' || fact.reviewStatus !== 'needs_review' || fact.sourceScope !== 'business') throw new Error('invalid_canonical_fact');\n    if (typeof fact.logicalKey !== 'string' || !fact.logicalKey || logicalKeys.has(fact.logicalKey)) throw new Error('invalid_or_duplicate_logical_key');\n    logicalKeys.add(fact.logicalKey);\n    if (!/^-?\\d+\\.\\d{2}$/.test(fact.amount) || (fact.metricCode !== 'net_result' && fact.amount.startsWith('-'))) throw new Error('invalid_financial_amount');\n    const sheet = String(fact.evidence?.sheet ?? '').trim();\n    const sourceCell = String(fact.evidence?.cellAddress ?? '');\n    const rowMatch = sourceCell.match(/(\\d+)$/);\n    const sourceRow = rowMatch ? Number(rowMatch[1]) : 0;\n    if (!requiredSheets.includes(sheet) || !/^[A-Z]{1,3}[1-9][0-9]*$/.test(sourceCell) || !Number.isSafeInteger(sourceRow) || sourceRow <= 0) throw new Error('invalid_fact_provenance');\n    const logicalKey = [expected.documentId, expected.sourceEtag, sheet, sourceCell, fact.metricCode, '2026-09'].join(':');\n    if (fact.logicalKey !== logicalKey) throw new Error('logical_key_mismatch');\n    return { logical_key: logicalKey, company_id: expected.companyId, company_name: expected.companyName, month: '2026-09-01', metric_code: fact.metricCode, amount: fact.amount, currency: 'BRL', sheet, source_row: sourceRow, source_cell: sourceCell, review_status: 'needs_review' };\n  });\n  return [{ json: { outcome: 'ready', supportedFactCount: rows.length, deferredFactCount: extraction.facts.length - rows.length, deferredBankTransactionCount: extraction.bankTransactions.length, rpcPayload: { p_document_id: expected.documentId, p_claim_id: claim.claim_id, p_source_etag: expected.sourceEtag, p_status: 'needs_review', p_rows: rows, p_note: 'financial-extraction.v1 canonical facts; manual real pilot 11D', p_excerpt: null } } }];\n} catch (error) { return failure(error instanceof Error ? error.message : 'invalid_extraction_contract'); }"
+      },
+      "id": "11d00000-0000-4000-8000-000000000013",
+      "name": "Validate structure and build v2 payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2400, -280]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "strict", "version": 2 },
+          "conditions": [{
+            "id": "11d00000-0000-4000-8000-000000000104",
+            "leftValue": "={{ $json.outcome }}",
+            "rightValue": "ready",
+            "operator": { "type": "string", "operation": "equals" }
+          }],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "11d00000-0000-4000-8000-000000000014",
+      "name": "Persistence payload ready?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [2640, -200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.KAWANA_SUPABASE_URL + '/rest/v1/rpc/finance_complete_document_v2' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Content-Type", "value": "application/json" }] },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.rpcPayload }}",
+        "options": { "response": { "response": { "fullResponse": true, "neverError": true, "responseFormat": "json" } }, "timeout": 15000 }
+      },
+      "id": "11d00000-0000-4000-8000-000000000015",
+      "name": "Complete exact document v2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2880, -320],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SELECT_HOSTINGER_SUPABASE_CREDENTIAL_AFTER_IMPORT",
+          "name": "KAWANA_SUPABASE_SERVICE_ROLE"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.KAWANA_SUPABASE_URL + '/rest/v1/rpc/finance_complete_document_v2' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Content-Type", "value": "application/json" }] },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.failurePayload }}",
+        "options": { "response": { "response": { "fullResponse": true, "neverError": true, "responseFormat": "json" } }, "timeout": 15000 }
+      },
+      "id": "11d00000-0000-4000-8000-000000000016",
+      "name": "Finalize rejected extraction as failed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2880, -80],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SELECT_HOSTINGER_SUPABASE_CREDENTIAL_AFTER_IMPORT",
+          "name": "KAWANA_SUPABASE_SERVICE_ROLE"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst context = $('Validate structure and build v2 payload').first().json;\nconst normalizeResponseBody = (rawBody) => {\n  let body = rawBody;\n  if (typeof body === 'string') {\n    try { body = JSON.parse(body); } catch { return null; }\n  }\n  if (Array.isArray(body)) {\n    if (body.length !== 1) return null;\n    [body] = body;\n  }\n  if (body === null || typeof body !== 'object' || Array.isArray(body)) return null;\n  return body;\n};\nconst statusCode = Number(response.statusCode);\nif (!Number.isInteger(statusCode)) return [{ json: { status: 'failure', stage: 'persistence', code: 'completion_response_shape_invalid', publishable: false } }];\nif (statusCode < 200 || statusCode >= 300) return [{ json: { status: 'failure', stage: 'persistence', code: 'completion_request_failed', publishable: false } }];\nconst body = normalizeResponseBody(response.body);\nif (!body) return [{ json: { status: 'failure', stage: 'persistence', code: 'completion_response_shape_invalid', publishable: false } }];\nconst insertedRows = Number(body.inserted_rows);\nconst unchangedRows = Number(body.unchanged_rows);\nconst valid = body.success === true && body.contract_version === 2 && body.status === 'needs_review' && body.requires_approval === true && Number.isSafeInteger(insertedRows) && Number.isSafeInteger(unchangedRows) && insertedRows + unchangedRows === context.supportedFactCount;\nreturn [{ json: valid ? { status: 'success', stage: 'persistence', contractVersion: 2, reviewStatus: 'needs_review', publishable: false, insertedRows, unchangedRows, deferredFactCount: context.deferredFactCount, deferredBankTransactionCount: context.deferredBankTransactionCount } : { status: 'failure', stage: 'persistence', code: 'invalid_completion_response', publishable: false } }];"
+      },
+      "id": "11d00000-0000-4000-8000-000000000017",
+      "name": "Return sanitized needs review result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3120, -320]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst normalizeResponseBody = (rawBody) => {\n  let body = rawBody;\n  if (typeof body === 'string') {\n    try { body = JSON.parse(body); } catch { return null; }\n  }\n  if (Array.isArray(body)) {\n    if (body.length !== 1) return null;\n    [body] = body;\n  }\n  if (body === null || typeof body !== 'object' || Array.isArray(body)) return null;\n  return body;\n};\nconst statusCode = Number(response.statusCode);\nif (!Number.isInteger(statusCode)) return [{ json: { status: 'failure', stage: 'failure_finalization', code: 'failed_completion_response_shape_invalid', publishable: false } }];\nif (statusCode < 200 || statusCode >= 300) return [{ json: { status: 'failure', stage: 'failure_finalization', code: 'failed_completion_request_failed', publishable: false } }];\nconst body = normalizeResponseBody(response.body);\nif (!body) return [{ json: { status: 'failure', stage: 'failure_finalization', code: 'failed_completion_response_shape_invalid', publishable: false } }];\nconst valid = body.success === true && body.contract_version === 2 && body.status === 'failed' && Number(body.inserted_rows) === 0;\nreturn [{ json: valid ? { status: 'failure', stage: 'extraction', code: 'rejected_before_fact_persistence', publishable: false, persistedFacts: 0 } : { status: 'failure', stage: 'failure_finalization', code: 'failed_completion_request_invalid', publishable: false } }];"
+      },
+      "id": "11d00000-0000-4000-8000-000000000018",
+      "name": "Return sanitized rejected result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3120, -80]
+    }
+  ],
+  "connections": {
+    "Manual trigger": { "main": [[{ "node": "Define exact real pilot", "type": "main", "index": 0 }]] },
+    "Define exact real pilot": { "main": [[{ "node": "Operational preflight approved?", "type": "main", "index": 0 }]] },
+    "Operational preflight approved?": { "main": [[{ "node": "Claim exact document v2", "type": "main", "index": 0 }], [{ "node": "Return blocked preflight result", "type": "main", "index": 0 }]] },
+    "Claim exact document v2": { "main": [[{ "node": "Validate exact claim response", "type": "main", "index": 0 }]] },
+    "Validate exact claim response": { "main": [[{ "node": "Exact document claimed?", "type": "main", "index": 0 }]] },
+    "Exact document claimed?": { "main": [[{ "node": "Download exact XLSX from Graph", "type": "main", "index": 0 }], [{ "node": "Return sanitized claim failure", "type": "main", "index": 0 }]] },
+    "Download exact XLSX from Graph": { "main": [[{ "node": "Validate downloaded XLSX", "type": "main", "index": 0 }]] },
+    "Validate downloaded XLSX": { "main": [[{ "node": "Downloaded XLSX eligible?", "type": "main", "index": 0 }]] },
+    "Downloaded XLSX eligible?": { "main": [[{ "node": "Invoke private XLSX worker", "type": "main", "index": 0 }], [{ "node": "Finalize rejected extraction as failed", "type": "main", "index": 0 }]] },
+    "Invoke private XLSX worker": { "main": [[{ "node": "Validate structure and build v2 payload", "type": "main", "index": 0 }]] },
+    "Validate structure and build v2 payload": { "main": [[{ "node": "Persistence payload ready?", "type": "main", "index": 0 }]] },
+    "Persistence payload ready?": { "main": [[{ "node": "Complete exact document v2", "type": "main", "index": 0 }], [{ "node": "Finalize rejected extraction as failed", "type": "main", "index": 0 }]] },
+    "Complete exact document v2": { "main": [[{ "node": "Return sanitized needs review result", "type": "main", "index": 0 }]] },
+    "Finalize rejected extraction as failed": { "main": [[{ "node": "Return sanitized rejected result", "type": "main", "index": 0 }]] }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "none",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false,
+    "executionTimeout": 120
+  },
+  "meta": {
+    "contractVersion": "11D",
+    "manualOnly": true,
+    "inactiveByDefault": true,
+    "operationalPreflightRequired": true,
+    "persistenceContract": "financial-extraction-persistence.v2",
+    "automaticApproval": false,
+    "automaticPublication": false,
+    "credentialValuesEmbedded": false
+  },
+  "tags": []
+}

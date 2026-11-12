@@ -212,3 +212,54 @@ test("bloqueia a RPC atual porque ela perderia fatos e chaves lógicas", async (
     ),
   );
 });
+
+test("rejeita duas ocorrencias canonicas da mesma metrica na competencia solicitada", async () => {
+  const extraction = await extractSyntheticFixture();
+  const revenue = extraction.facts.find(
+    (fact) => fact.metricCode === "revenue" && fact.periodMonth === "2026-09",
+  )!;
+  extraction.facts.push({
+    ...revenue,
+    logicalKey: [
+      revenue.documentId,
+      revenue.sourceEtag,
+      revenue.evidence.sheet,
+      "L85",
+      revenue.metricCode,
+      revenue.periodMonth,
+    ].join(":"),
+    evidence: { ...revenue.evidence, cellAddress: "L85" },
+  });
+
+  assert.throws(
+    () => prepareFinancialReviewPersistence(extraction, identity),
+    (error: Error & { code?: string }) => (
+      error.code === "duplicate_required_canonical_fact"
+    ),
+  );
+});
+
+test("mantem fato canonico de outra competencia fora do payload", async () => {
+  const extraction = await extractSyntheticFixture();
+  const revenue = extraction.facts.find(
+    (fact) => fact.metricCode === "revenue" && fact.periodMonth === "2026-09",
+  )!;
+  extraction.facts.push({
+    ...revenue,
+    periodMonth: "2026-08",
+    logicalKey: [
+      revenue.documentId,
+      revenue.sourceEtag,
+      revenue.evidence.sheet,
+      "J85",
+      revenue.metricCode,
+      "2026-08",
+    ].join(":"),
+    evidence: { ...revenue.evidence, cellAddress: "J85" },
+  });
+
+  const plan = prepareFinancialReviewPersistence(extraction, identity);
+  assert.equal(plan.facts.length, 4);
+  assert.ok(plan.facts.every((fact) => fact.periodMonth === "2026-09"));
+  assert.ok(plan.deferredFacts.some((fact) => fact.logicalKey.endsWith(":J85:revenue:2026-08")));
+});

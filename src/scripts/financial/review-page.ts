@@ -1,7 +1,10 @@
 import { getCurrentSession } from "../../services/auth/auth";
 import {
+  decideFinanceReview,
   getFinanceReviewHistory,
   listFinanceReviews,
+  setFinanceReviewDocumentRole,
+  type FinanceReviewDecision,
   type FinanceReviewHistoryItem,
   type FinanceReviewRow,
   type FinanceReviewStatus,
@@ -25,6 +28,7 @@ const roleLabels: Record<FinanceSourceRole, string> = {
 
 type ReviewStatus = Exclude<FinanceReviewStatus, "all">;
 type StatusState = "loading" | "error" | "denied" | "unauthenticated";
+type ReviewAction = FinanceReviewDecision | "classify_primary";
 
 const state = {
   status: "pending_review" as ReviewStatus,
@@ -36,6 +40,7 @@ const state = {
   total: 0,
   rows: [] as FinanceReviewRow[],
   selectedRow: null as FinanceReviewRow | null,
+  action: null as ReviewAction | null,
   userId: null as string | null,
   requestId: 0,
 };
@@ -171,15 +176,25 @@ function appendActions(container: HTMLElement, row: FinanceReviewRow) {
 
   if (row.review_status !== "pending_review") return;
 
-  const reason = "A autorização de decisão não é informada pela RPC de listagem.";
-  const approve = button("Aprovar", "locked", row.id, "button-small is-success");
-  const reject = button("Rejeitar", "locked", row.id, "button-small is-danger");
+  if (row.can_classify && row.source_usage_role !== "primary") {
+    container.append(button("Definir como primária", "classify_primary", row.id));
+  }
 
-  [approve, reject].forEach((action) => {
-    action.disabled = true;
-    action.title = reason;
-    action.setAttribute("aria-label", `${action.textContent}. Bloqueado: ${reason}`);
-  });
+  const approve = button("Aprovar", "approve", row.id, "button-small is-success");
+  const reject = button("Rejeitar", "reject", row.id, "button-small is-danger");
+  const approvalReady = row.can_decide && row.source_usage_role === "primary";
+
+  approve.disabled = !approvalReady;
+  reject.disabled = !row.can_decide;
+
+  if (!approvalReady) {
+    approve.title = row.source_usage_role !== "primary"
+      ? "Classifique o documento como fonte primária antes de aprovar."
+      : "Sua sessão não possui permissão para aprovar este fato.";
+  }
+  if (!row.can_decide) {
+    reject.title = "Sua sessão não possui permissão para decidir este fato.";
+  }
 
   container.append(approve, reject);
 }
@@ -441,6 +456,124 @@ function errorView(error: unknown) {
   };
 }
 
+function showToast(message: string, tone: "success" | "error" = "success") {
+  const toast = query<HTMLElement>("[data-review-toast]");
+  if (!toast) return;
+
+  toast.textContent = message;
+  toast.dataset.tone = tone;
+  toast.hidden = false;
+  window.setTimeout(() => {
+    toast.hidden = true;
+  }, 4500);
+}
+
+function closeActionDialog() {
+  const dialog = query<HTMLDialogElement>("[data-review-action-dialog]");
+  const form = query<HTMLFormElement>("[data-review-action-form]");
+  const error = query<HTMLElement>("[data-review-action-error]");
+
+  dialog?.close();
+  form?.reset();
+  if (error) error.hidden = true;
+  state.action = null;
+  state.selectedRow = null;
+}
+
+function openActionDialog(row: FinanceReviewRow, action: ReviewAction) {
+  if (row.review_status !== "pending_review") return;
+  if (action === "classify_primary" && !row.can_classify) return;
+  if (action !== "classify_primary" && !row.can_decide) return;
+  if (action === "approve" && row.source_usage_role !== "primary") return;
+
+  const dialog = query<HTMLDialogElement>("[data-review-action-dialog]");
+  const title = query<HTMLElement>("[data-review-action-title]");
+  const description = query<HTMLElement>("[data-review-action-description]");
+  const confirm = query<HTMLButtonElement>("[data-review-action-confirm]");
+  const error = query<HTMLElement>("[data-review-action-error]");
+  const reason = query<HTMLTextAreaElement>("[data-review-action-reason]");
+  if (!dialog || !title || !description || !confirm || !error || !reason) return;
+
+  const content = action === "classify_primary"
+    ? {
+        title: "Classificar documento como fonte primária",
+        description: "Esta classificação será auditada e habilitará a aprovação dos fatos deste documento.",
+        confirm: "Confirmar fonte primária",
+        intent: "classify",
+      }
+    : action === "approve"
+      ? {
+          title: "Aprovar fato financeiro",
+          description: "A aprovação será auditada, mas não publicará o valor automaticamente no Dashboard.",
+          confirm: "Aprovar fato",
+          intent: "approve",
+        }
+      : {
+          title: "Rejeitar fato financeiro",
+          description: "O fato será rejeitado e não poderá participar da publicação mensal.",
+          confirm: "Rejeitar fato",
+          intent: "reject",
+        };
+
+  state.selectedRow = row;
+  state.action = action;
+  title.textContent = content.title;
+  description.textContent = content.description;
+  confirm.textContent = content.confirm;
+  confirm.dataset.intent = content.intent;
+  confirm.disabled = false;
+  error.hidden = true;
+  reason.value = "";
+  reason.removeAttribute("aria-invalid");
+  dialog.showModal();
+  reason.focus();
+}
+
+async function submitAction(event: SubmitEvent) {
+  event.preventDefault();
+
+  const row = state.selectedRow;
+  const action = state.action;
+  const reason = query<HTMLTextAreaElement>("[data-review-action-reason]");
+  const confirm = query<HTMLButtonElement>("[data-review-action-confirm]");
+  const error = query<HTMLElement>("[data-review-action-error]");
+  if (!row || !action || !reason || !confirm || !error) return;
+
+  const normalizedReason = reason.value.trim();
+  if (normalizedReason.length < 8 || normalizedReason.length > 500) {
+    reason.setAttribute("aria-invalid", "true");
+    error.textContent = "Informe uma justificativa entre 8 e 500 caracteres.";
+    error.hidden = false;
+    return;
+  }
+
+  reason.removeAttribute("aria-invalid");
+  error.hidden = true;
+  confirm.disabled = true;
+
+  try {
+    if (action === "classify_primary") {
+      await setFinanceReviewDocumentRole(row.document_id, "primary", normalizedReason);
+      showToast("Documento classificado como fonte primária.");
+    } else {
+      await decideFinanceReview(row, action, normalizedReason);
+      showToast(action === "approve" ? "Fato aprovado para publicação." : "Fato rejeitado.");
+    }
+
+    closeActionDialog();
+    await loadRows();
+  } catch (actionError) {
+    const view = errorView(actionError);
+    error.textContent = view.state === "denied"
+      ? "Sua sessão não possui permissão para esta ação."
+      : view.state === "unauthenticated"
+        ? "Sua sessão expirou. Entre novamente para continuar."
+        : "Não foi possível concluir a ação. Atualize a fila e tente novamente.";
+    error.hidden = false;
+    confirm.disabled = false;
+  }
+}
+
 async function loadCounts(requestId: number) {
   const statuses = ["pending_review", "approved", "rejected"] as const;
   const results = await Promise.allSettled(
@@ -556,6 +689,8 @@ async function openDetails(row: FinanceReviewRow) {
   const title = query<HTMLElement>("[data-review-details-title]");
   const historyStatus = query<HTMLElement>("[data-review-history-status]");
   const historyList = query<HTMLOListElement>("[data-review-history]");
+  const capabilityTitle = query<HTMLElement>("[data-review-capability-title]");
+  const capabilityDescription = query<HTMLElement>("[data-review-capability-description]");
 
   if (!dialog || !details || !trace || !validations || !title || !historyStatus || !historyList) {
     return;
@@ -610,6 +745,21 @@ async function openDetails(row: FinanceReviewRow) {
       : `Classificação atual: ${roleLabels[row.source_usage_role]}.`,
     row.source_usage_role === "primary" ? "success" : "warning",
   );
+
+  if (capabilityTitle && capabilityDescription) {
+    if (row.can_decide) {
+      capabilityTitle.textContent = "Decisão autorizada";
+      capabilityDescription.textContent = row.source_usage_role === "primary"
+        ? "Sua sessão pode aprovar ou rejeitar este fato. A publicação continuará separada."
+        : "Sua sessão pode rejeitar o fato; a aprovação exige uma fonte primária.";
+    } else if (row.can_classify) {
+      capabilityTitle.textContent = "Classificação autorizada";
+      capabilityDescription.textContent = "Sua sessão pode classificar o documento, mas não decidir este fato.";
+    } else {
+      capabilityTitle.textContent = "Consulta autorizada";
+      capabilityDescription.textContent = "Sua sessão pode consultar este fato, sem permissão para alterá-lo.";
+    }
+  }
 
   historyList.replaceChildren();
   historyStatus.hidden = false;
@@ -695,15 +845,34 @@ function bindEvents() {
     if (!(target instanceof Element)) return;
 
     const actionButton = target.closest<HTMLButtonElement>("[data-review-row-action]");
-    if (!actionButton || actionButton.dataset.reviewRowAction !== "details") return;
+    if (!actionButton) return;
 
     const row = state.rows.find((item) => item.id === actionButton.dataset.rowId);
-    if (row) void openDetails(row);
+    if (!row) return;
+
+    const action = actionButton.dataset.reviewRowAction;
+    if (action === "details") {
+      void openDetails(row);
+    } else if (action === "approve" || action === "reject" || action === "classify_primary") {
+      openActionDialog(row, action);
+    }
   });
 
   query<HTMLButtonElement>("[data-review-details-close]")?.addEventListener("click", () => {
     query<HTMLDialogElement>("[data-review-details-dialog]")?.close();
   });
+
+  query<HTMLFormElement>("[data-review-action-form]")?.addEventListener("submit", (event) => {
+    void submitAction(event);
+  });
+  query<HTMLButtonElement>("[data-review-action-close]")?.addEventListener(
+    "click",
+    closeActionDialog,
+  );
+  query<HTMLButtonElement>("[data-review-action-cancel]")?.addEventListener(
+    "click",
+    closeActionDialog,
+  );
 }
 
 export async function loadFinancialReviewPage() {

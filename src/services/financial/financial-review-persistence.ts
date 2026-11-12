@@ -88,6 +88,7 @@ export type FinancialReviewPersistenceErrorCode =
   | "invalid_extraction_contract"
   | "identity_mismatch"
   | "duplicate_logical_key"
+  | "duplicate_required_canonical_fact"
   | "missing_required_canonical_fact"
   | "invalid_claim_id"
   | "existing_rpc_contract_incompatible";
@@ -137,6 +138,16 @@ function validateExtractionHeader(extraction: FinancialExtractionV1) {
     throw persistenceError(
       "invalid_extraction_contract",
       "A resposta do parser não está bloqueada para revisão financeira.",
+    );
+  }
+
+  if (
+    extraction.metadata.mapping.version === "2"
+    && extraction.reconciliations.some((item) => item.status !== "passed")
+  ) {
+    throw persistenceError(
+      "invalid_extraction_contract",
+      "O mapping v2 possui conciliacoes financeiras pendentes ou divergentes.",
     );
   }
 }
@@ -213,9 +224,10 @@ function validateLogicalKeys(facts: FinancialFact[]) {
   }
 }
 
-function isCanonicalInitialFact(fact: FinancialFact) {
+function isCanonicalInitialFact(fact: FinancialFact, expectedPeriod: string) {
   return fact.includedInConsolidatedKpi
     && fact.aggregationLevel === "canonical"
+    && fact.periodMonth === expectedPeriod
     && isSupportedMetricCode(fact.metricCode);
 }
 
@@ -320,15 +332,28 @@ function deferredFact(fact: FinancialFact): DeferredFinancialFact {
 }
 
 function validateRequiredFacts(facts: FinancialReviewPersistenceFact[]) {
-  const availableMetrics = new Set(facts.map((fact) => fact.metricCode));
+  const metricCounts = new Map<SupportedFinancialMetricCode, number>();
+  for (const fact of facts) {
+    metricCounts.set(fact.metricCode, (metricCounts.get(fact.metricCode) ?? 0) + 1);
+  }
   const missingMetrics = supportedMetricCodes.filter(
-    (metricCode) => !availableMetrics.has(metricCode),
+    (metricCode) => !metricCounts.has(metricCode),
   );
 
   if (missingMetrics.length > 0) {
     throw persistenceError(
       "missing_required_canonical_fact",
       `A extração não contém todos os fatos canônicos obrigatórios: ${missingMetrics.join(", ")}.`,
+    );
+  }
+
+  const duplicateMetrics = supportedMetricCodes.filter(
+    (metricCode) => (metricCounts.get(metricCode) ?? 0) > 1,
+  );
+  if (duplicateMetrics.length > 0 || facts.length !== supportedMetricCodes.length) {
+    throw persistenceError(
+      "duplicate_required_canonical_fact",
+      `A extracao contem fatos canonicos duplicados: ${duplicateMetrics.join(", ") || "escopo inesperado"}.`,
     );
   }
 }
@@ -340,9 +365,10 @@ export function prepareFinancialReviewPersistence(
   validateExtractionHeader(extraction);
   validateExpectedIdentity(extraction, expected);
   validateLogicalKeys(extraction.facts);
+  const expectedPeriod = extraction.metadata.periodMonth;
 
   const facts = extraction.facts
-    .filter(isCanonicalInitialFact)
+    .filter((fact) => isCanonicalInitialFact(fact, expectedPeriod))
     .map(mapFact);
 
   validateRequiredFacts(facts);
@@ -357,7 +383,7 @@ export function prepareFinancialReviewPersistence(
     },
     facts,
     deferredFacts: extraction.facts
-      .filter((fact) => !isCanonicalInitialFact(fact))
+      .filter((fact) => !isCanonicalInitialFact(fact, expectedPeriod))
       .map(deferredFact),
     deferredBankTransactionCount: extraction.bankTransactions.length,
     existingRpcCompatible: false,

@@ -8,12 +8,11 @@
   <aside class="financial-review__notice" aria-label="Modo de segurança da revisão">
     <div>
       <span class="financial-review__notice-icon" aria-hidden="true">✓</span>
-      <strong>Consulta segura, sem decisões nesta etapa</strong>
+      <strong>Revisão humana obrigatória</strong>
     </div>
     <p>
-      Aprovação, rejeição e classificação permanecem bloqueadas até que o contrato
-      de autorização informe explicitamente as capacidades do usuário. Nenhum valor
-      desta tela é publicado nos indicadores financeiros.
+      As ações aparecem somente quando a RPC confirma a capacidade do usuário.
+      Aprovar um fato não o publica automaticamente nos indicadores financeiros.
     </p>
   </aside>
 
@@ -187,10 +186,56 @@
         <ol data-review-history></ol>
       </section>
 
-      <aside class="financial-review__decision-lock">
-        <strong>Decisões bloqueadas</strong>
-        <p>A listagem não comprova a capacidade de decidir ou classificar este registro.</p>
+      <aside class="financial-review__decision-lock" data-review-capability-status>
+        <strong data-review-capability-title>Permissões da revisão</strong>
+        <p data-review-capability-description>
+          As ações disponíveis dependem das capacidades retornadas pela RPC.
+        </p>
       </aside>
     </div>
   </dialog>
+
+  <dialog
+    class="financial-review-dialog financial-review-action"
+    data-review-action-dialog
+    aria-labelledby="review-action-title"
+  >
+    <form method="dialog" data-review-action-form>
+      <header>
+        <div>
+          <p class="financial-review__eyebrow">Confirmação obrigatória</p>
+          <h2 id="review-action-title" data-review-action-title>Revisar registro</h2>
+        </div>
+        <button
+          type="button"
+          class="financial-review-dialog__close"
+          data-review-action-close
+          aria-label="Cancelar ação"
+        >×</button>
+      </header>
+
+      <div class="financial-review-dialog__body">
+        <p data-review-action-description></p>
+        <label>
+          <span>Justificativa</span>
+          <textarea
+            data-review-action-reason
+            minlength="8"
+            maxlength="500"
+            required
+            aria-describedby="review-reason-help"
+          ></textarea>
+        </label>
+        <small id="review-reason-help">Informe entre 8 e 500 caracteres.</small>
+        <p class="financial-review-action__server-error" data-review-action-error hidden></p>
+      </div>
+
+      <footer>
+        <button type="button" class="button-small" data-review-action-cancel>Cancelar</button>
+        <button type="submit" class="button-small" data-review-action-confirm>Confirmar</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <p class="financial-review-toast" data-review-toast role="status" hidden></p>
 </section>

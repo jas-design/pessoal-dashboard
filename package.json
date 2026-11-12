@@ -12,7 +12,7 @@
     "test:notifications": "tsx --test tests/notifications/notification-state.test.ts",
     "test:static-build": "tsx --test tests/build/static-dashboard-imports.test.ts",
     "test:runtime-indicators": "tsx --test tests/settings/runtime-indicators.test.ts",
-    "test:financial-parser": "tsx --test tests/financial/kawana-xlsx-parser.test.ts tests/financial/financial-xlsx-worker.test.ts tests/financial/financial-review-persistence.test.ts tests/financial/financial-persistence-migration.test.ts tests/financial/financial-publication-migration.test.ts tests/financial/financial-published-metrics.test.ts tests/financial/financial-test-authorization.test.ts tests/financial/local-n8n-workflow.test.ts tests/financial/local-n8n-workflow-v2.test.ts tests/financial/local-n8n-compose.test.ts",
+    "test:financial-parser": "tsx --test tests/financial/kawana-xlsx-parser.test.ts tests/financial/financial-xlsx-worker.test.ts tests/financial/financial-review-persistence.test.ts tests/financial/financial-persistence-migration.test.ts tests/financial/financial-publication-migration.test.ts tests/financial/financial-published-metrics.test.ts tests/financial/financial-test-authorization.test.ts tests/financial/local-n8n-workflow.test.ts tests/financial/local-n8n-workflow-v2.test.ts tests/financial/local-n8n-compose.test.ts tests/financial/kawana-2026-batch-n8n-workflow-v2.test.ts",
     "financial:create-synthetic-fixture": "tsx scripts/financial/create-synthetic-xlsx-fixture.ts",
     "financial:worker": "tsx scripts/financial/worker/start.ts",
     "financial:dry-run": "tsx scripts/financial/kawana-xlsx-dry-run.ts",

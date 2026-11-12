@@ -32,7 +32,7 @@ type FinancialXlsxExtractionRequest = {
 };
 ```
 
-O adaptador não determina empresa, nome do arquivo ou competência. Esses campos devem vir do job autenticado e autorizado. Quando `periodMonth` não for informado, o mapeamento pode detectá-lo no documento.
+O adaptador não determina empresa, nome do arquivo ou competência. Esses campos devem vir do job autenticado e autorizado. O mapping v1 pode detectar a competência no documento; o mapping v2 exige `periodMonth` explícito.
 
 Validações antes do parsing:
 
@@ -50,7 +50,10 @@ O registro atual contém:
 
 ```text
 kawana-management-report@1 -> parser 06A.1
+kawana-management-report@2 -> parser 12A.2
 ```
+
+O mapping v2 reconhece tanto o layout mensal legado quanto o layout consolidado real de janeiro/2026. No layout legado, ele deriva a coluna mensal e a aba `Fluxo de Caixa <ano>` da competência autorizada. No layout consolidado, lê somente as quatro células autorizadas em `RESUMO KWM` e `RECEITAS X DESPESAS KWN`, valida o sinal negativo original da despesa e confere os totais contra as abas de detalhe e os saldos bancários. Somente `revenue`, `expense`, `net_result` e `cash_available` dessa competência ficam canônicos; os demais fatos permanecem diferidos para revisão. A persistência v2 exige todas as conciliações aplicáveis aprovadas e exatamente uma ocorrência de cada métrica canônica.
 
 Um novo formato deve receber novo ID. Uma mudança incompatível no layout existente deve receber nova versão. O adaptador não possui regras de células, empresa ou competência; ele apenas valida a entrada e seleciona o mapeamento.
 

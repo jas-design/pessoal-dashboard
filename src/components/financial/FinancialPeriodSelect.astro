@@ -30,7 +30,10 @@ const { targetPath = "/dashboard", shortYear = false } = Astro.props;
 </div>
 
 <script>
-  import { formatMonthYear } from "../../services/financial/period-format";
+  import {
+    formatMonthYear,
+    resolveAvailableFinancialPeriod,
+  } from "../../services/financial/period-format";
   import {
     getAvailableFinancialPeriods,
     type FinancialPeriod,
@@ -40,11 +43,14 @@ const { targetPath = "/dashboard", shortYear = false } = Astro.props;
     const params = new URLSearchParams(window.location.search);
     const year = Number(params.get("year"));
     const month = Number(params.get("month"));
-    const urlPeriod = periods.find(
-      (period) => period.year === year && period.month === month
-    );
+    const requestedPeriod = Number.isInteger(year)
+      && Number.isInteger(month)
+      && month >= 1
+      && month <= 12
+      ? { year, month }
+      : null;
 
-    return urlPeriod ?? periods[0] ?? null;
+    return resolveAvailableFinancialPeriod(periods, requestedPeriod);
   }
 
   function navigateToPeriod(value: string) {

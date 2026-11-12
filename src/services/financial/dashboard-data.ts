@@ -1,4 +1,7 @@
-import { formatMonthYear } from "./period-format";
+import {
+  formatMonthYear,
+  resolveAvailableFinancialPeriod,
+} from "./period-format";
 import {
   financialMetricCards,
   type FinancialMetricCardDefinition,
@@ -60,10 +63,10 @@ function updateDashboardStatus(metrics: MonthlyFinancialMetrics | null) {
 function resolveSelectedPeriod(periods: FinancialPeriod[]) {
   const now = new Date();
 
-  return readPeriodFromUrl() ?? periods[0] ?? {
+  return resolveAvailableFinancialPeriod(periods, readPeriodFromUrl(), {
     year: now.getFullYear(),
     month: now.getMonth() + 1,
-  };
+  });
 }
 
 function isRealNumber(value: number | null): value is number {

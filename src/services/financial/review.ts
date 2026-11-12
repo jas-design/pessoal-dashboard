@@ -32,6 +32,8 @@ export interface FinanceReviewRow {
   source_usage_role: FinanceSourceRole;
   source_version_current: boolean;
   is_deleted: boolean;
+  can_decide: boolean;
+  can_classify: boolean;
 }
 
 export interface FinanceReviewListResult {
@@ -107,7 +109,9 @@ function isReviewRow(value: unknown): value is FinanceReviewRow {
     && Number.isInteger(row.review_revision)
     && validRole
     && typeof row.source_version_current === "boolean"
-    && typeof row.is_deleted === "boolean";
+    && typeof row.is_deleted === "boolean"
+    && typeof row.can_decide === "boolean"
+    && typeof row.can_classify === "boolean";
 }
 
 function ensureListResult(value: unknown): FinanceReviewListResult {

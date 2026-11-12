@@ -10,7 +10,7 @@ services:
       FINANCIAL_XLSX_WORKER_SECRET_FILE: /run/secrets/financial_xlsx_worker_auth
       FINANCIAL_XLSX_WORKER_HOST: 0.0.0.0
       FINANCIAL_XLSX_WORKER_PORT: 8787
-      FINANCIAL_XLSX_MAX_FILE_SIZE: 26214400
+      FINANCIAL_XLSX_MAX_FILE_SIZE: 8388608
       FINANCIAL_XLSX_TIMEOUT_MS: 30000
       FINANCIAL_XLSX_MAX_OLD_SPACE_MB: 256
     expose:
@@ -43,7 +43,7 @@ services:
 networks:
   n8n_runtime:
     external: true
-    name: ${N8N_DOCKER_NETWORK:?informe a rede Docker existente do executor n8n}
+    name: n8n-mhbu_default
 
 secrets:
   financial_xlsx_worker_auth:

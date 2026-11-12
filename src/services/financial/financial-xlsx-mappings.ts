@@ -1,6 +1,8 @@
 import {
   KAWANA_PARSER_VERSION,
+  KAWANA_PARSER_V2_VERSION,
   parseKawanaWorkbook,
+  parseKawanaWorkbookV2,
   type KawanaParseResult,
   type ParserContext,
 } from "./kawana-xlsx-parser";
@@ -21,6 +23,12 @@ const financialXlsxMappings: FinancialXlsxMapping[] = [
     version: "1",
     parserVersion: KAWANA_PARSER_VERSION,
     parse: parseKawanaWorkbook,
+  },
+  {
+    id: "kawana-management-report",
+    version: "2",
+    parserVersion: KAWANA_PARSER_V2_VERSION,
+    parse: parseKawanaWorkbookV2,
   },
 ];
 

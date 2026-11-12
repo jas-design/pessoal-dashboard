@@ -145,6 +145,16 @@ export async function extractFinancialXlsx(
 ): Promise<FinancialExtractionV1> {
   validateRequest(request);
   const mapping = resolveMapping(request);
+  if (
+    mapping.id === "kawana-management-report"
+    && mapping.version === "2"
+    && !request.periodMonth
+  ) {
+    throw adapterError(
+      "invalid_metadata",
+      "A competencia e obrigatoria para o mapping kawana-management-report@2.",
+    );
+  }
   const result = await runMapping(mapping, request);
 
   return {
