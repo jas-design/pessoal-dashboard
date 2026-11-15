@@ -409,6 +409,44 @@ test("mapping v2 reconhece o layout consolidado e preserva as quatro origens", a
   }).facts.length, 4);
 });
 
+test("mapping v2 aceita receita em B24 e usa a origem real nas conciliacoes", async () => {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(Uint8Array.from(await createSyntheticConsolidatedWorkbook()).buffer);
+  const combined = workbook.getWorksheet("RECEITAS X DESPESAS KWN")!;
+  combined.getCell("A23").value = null;
+  combined.getCell("B23").value = 999;
+  combined.getCell("A24").value = "Receita";
+  combined.getCell("B24").value = 120.25;
+  const request = {
+    mimeType: XLSX_MIME_TYPE,
+    mapping: { id: "kawana-management-report", version: "2" },
+    company: { id: "00000000-0000-4000-8000-000000000961", name: "Kawana" },
+    document: { id: "00000000-0000-4000-8000-000000000962", fileName: "synthetic.xlsx", etag: "synthetic" },
+    periodMonth: "2026-01",
+  };
+  const result = await extractFinancialXlsx({ ...request, binary: Buffer.from(await workbook.xlsx.writeBuffer()) });
+  const revenue = result.facts.find((fact) => fact.metricCode === "revenue" && fact.aggregationLevel === "canonical");
+  assert.equal(revenue?.amount, "120.25");
+  assert.equal(revenue?.evidence.cellAddress, "B24");
+  assert.ok(result.reconciliations.every((item) => item.status === "passed"));
+  assert.equal(result.reconciliations.filter((item) => item.sources.includes("RECEITAS X DESPESAS KWN!B24")).length, 2);
+  assert.ok(result.reconciliations.every((item) => !item.sources.includes("RECEITAS X DESPESAS KWN!B23")));
+
+  combined.getCell("B24").value = 121.25;
+  const divergent = await extractFinancialXlsx({ ...request, binary: Buffer.from(await workbook.xlsx.writeBuffer()) });
+  assert.equal(divergent.reconciliations.filter((item) => item.status === "failed").length, 2);
+
+  for (const invalid of ["duplicate", "missing", "nonnumeric"]) {
+    combined.getCell("A23").value = invalid === "duplicate" ? "Receita" : null;
+    combined.getCell("A24").value = invalid === "missing" ? "Outro" : "Receita";
+    combined.getCell("B24").value = invalid === "nonnumeric" ? "sem valor" : 120.25;
+    await assert.rejects(
+      extractFinancialXlsx({ ...request, binary: Buffer.from(await workbook.xlsx.writeBuffer()) }),
+      (error: Error) => error.name === "invalid_xlsx",
+    );
+  }
+});
+
 test("mapping v2 rejeita layout consolidado incompleto e despesa sem sinal negativo", async () => {
   const request = {
     mimeType: XLSX_MIME_TYPE,
