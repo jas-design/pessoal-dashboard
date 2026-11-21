@@ -1,6 +1,9 @@
 # build output
 dist/
 
+# generated Graphify knowledge graph
+graphify-out/
+
 # generated types
 .astro/
 
