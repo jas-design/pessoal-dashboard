@@ -1,0 +1,30 @@
+services:
+  document-content-worker:
+    image: fabio-document-content-worker:13c-diag-v1
+    build: .
+    user: "1000:1000"
+    restart: unless-stopped
+    init: true
+    environment:
+      DOCUMENT_WORKER_SECRET_FILE: /run/secrets/document_worker_auth
+    secrets:
+      - document_worker_auth
+    expose: ["8788"]
+    networks: [n8n_runtime]
+    read_only: true
+    tmpfs: ["/tmp:size=256m,mode=1777,noexec,nosuid,nodev"]
+    mem_limit: 768m
+    cpus: 0.75
+    pids_limit: 64
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+networks:
+  n8n_runtime:
+    external: true
+    name: n8n-mhbu_default
+secrets:
+  document_worker_auth:
+    file: ${DOCUMENT_WORKER_SECRET_PATH:?provide existing worker secret path}

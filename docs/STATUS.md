@@ -96,3 +96,11 @@ O snapshot analisado tinha 1.387 nós e 2.514 relações. O diagnóstico registr
 relações externas/pendentes e relações colapsadas no grafo não direcionado;
 portanto, o mapa serve para navegação e memória, enquanto código, migrations e
 verificação autorizada dos serviços permanecem como fontes finais.
+
+## Entrega 13C — 23/11/2026
+
+Fontes de planilhas/OCR, workflows inativos, testes e migrations adicionados ao
+Git. Consulte `docs/financial/13C_DOCUMENT_CONTENT.md` para evidências e limites.
+A migration de diagnóstico foi aplicada; os novos workflows são rascunhos inativos.
+A VPS continua na imagem 13c-v1 segundo a verificação MCP fornecida pelo usuário;
+a imagem 13c-diag-v1 e seu piloto ainda não foram implantados.
