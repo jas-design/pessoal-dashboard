@@ -395,8 +395,11 @@ Supabase.
 ## 6.7 Publicacao financeira aprovada por empresa
 
 A migration `20261030120000_financial_monthly_publication.sql` adiciona o
-contrato versionado `financial_monthly_metrics_published`. Ela permanece
-pendente de aplicacao e validacao no staging isolado.
+contrato versionado `financial_monthly_metrics_published`. Em 2026-11-25, uma
+consulta direta autorizada ao ambiente remoto confirmou setembro de 2026 já
+publicado, portanto o contrato está operacional nesse ambiente. Ainda é
+necessário reconciliar a cadeia completa de migrations, policies e grants com o
+Git antes de reproduzir ou alterar o schema.
 
 Esse contrato:
 

@@ -62,7 +62,7 @@ job_state as (
            job.completed_at, job.claim_id
     from public.financial_extraction_jobs job
     where job.document_id = expected.document_id
-    order by job.created_at desc
+    order by job.updated_at desc
     limit 1
   ) latest on true
 )

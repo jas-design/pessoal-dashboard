@@ -1,103 +1,92 @@
 # Integrações
 
-Este documento registra contratos e evidências do repositório sem incluir
-credenciais. Estado remoto só deve ser afirmado após verificação autorizada no
-serviço correspondente.
+Estado consolidado em 2026-11-25. Nenhuma credencial ou cursor privado deve ser
+copiado para este documento.
 
 ## GitHub
 
-**Finalidade:** versionamento e colaboração do projeto.
+**Finalidade:** versionamento, revisão e automação de entrega.
 
-**Verificado no repositório:** existe um remote Git chamado `origin`. Não há
-arquivos em `.github/`, portanto não foi encontrado workflow GitHub Actions
-versionado.
+**Verificado localmente:** o repositório possui remote `origin`. O estado de
+branch protection, environments, secrets e Actions deve ser conferido no
+GitHub antes de qualquer deploy; não é inferido pelo conteúdo local.
 
-**Segurança:** `.env`, tokens, chaves, dumps, credenciais e exports sensíveis
-devem permanecer ignorados. Antes de push, usar o secret check de
-`docs/PRODUCTION_SECURITY.md`.
-
-**Não confirmado externamente:** URL/conteúdo atual do remote, branch padrão,
-proteções, Actions, secrets, deploy hooks, permissões e sincronização com o
-workspace local.
+**Segurança:** `.env`, tokens, chaves, dumps e credenciais permanecem fora do
+Git. Antes de push, executar o secret check de `docs/PRODUCTION_SECURITY.md`.
 
 ## Supabase
 
-**Finalidade:** Auth, PostgreSQL, RLS, Storage, catálogo, dados financeiros,
-preferências, notificações e auditoria.
+**Finalidade:** Auth, PostgreSQL, RLS, Storage, catálogo, revisão, publicação
+financeira, preferências, notificações e auditoria.
 
-**Verificado no repositório:** o browser usa `src/lib/supabase/browser.ts` com
-URL e anon key públicas. Services consultam tabelas e RPCs explícitas. Migrations
-versionadas implementam hardening, isolamento por empresa, persistência v2,
-publicação mensal e claim determinístico.
+**Verificado no código:** o browser usa `src/lib/supabase/browser.ts`. A revisão
+usa `finance_review_*`; a publicação mensal usa
+`finance_publish_monthly_metrics`; Dashboard e Financeiro leem
+`financial_monthly_metrics_published` quando há empresa selecionada.
 
-**Fluxos principais:**
+**Evidência operacional:** o Delta Sync remoto leu o estado de sincronização e
+concluiu a RPC atômica do Supabase. Consulta direta anterior confirmou 5.230
+documentos, 40 fatos financeiros, 36 pendentes e setembro de 2026 publicado.
 
-- sessão -> services -> queries sob RLS;
-- upload -> bucket privado -> `documents`;
-- revisão -> RPCs `finance_review_*`;
-- publicação -> `financial_monthly_metrics_published`;
-- n8n/worker -> RPCs restritas ao contexto server-side.
-
-**Segurança:** service role nunca deve chegar ao browser. Grants, policies e
-assinaturas de RPC devem ser conferidos nas migrations e no ambiente real.
-
-**Não confirmado externamente:** migrations aplicadas, schema atual, policies,
-grants, dados, buckets, URLs, saúde e projeto efetivamente usado por cada
-ambiente.
+**Ainda pendente:** inventário integral de migrations, schema, policies, grants,
+buckets e ACLs no projeto remoto. Dados publicados provam que o contrato está
+em uso, não que toda a cadeia versionada esteja reconciliada.
 
 ## n8n
 
-**Finalidade:** orquestrar Microsoft Graph, download de documentos, worker XLSX,
-persistência e automações futuras.
+**Finalidade:** Microsoft Graph, OneDrive, workers privados, persistência e
+automações controladas.
 
-**Verificado no repositório:** existem quatro exports em `n8n/workflows/`, todos
-inativos. Há configuração local em `n8n/local/` e testes que validam estrutura,
-contratos e compatibilidade dos exports.
+**Evidência operacional:** MCP conectado; 16 workflows encontrados. Estavam
+ativos somente o Delta Sync 03 e a fila PDF 13B. As quatro cópias 13C estavam
+inativas. O workflow 03 tinha 1.346 execuções indexadas e as 200 mais recentes
+terminaram com sucesso.
 
-**Segurança:** navegador não chama webhook privado diretamente. Credenciais do
-Supabase, Microsoft Graph e worker devem ser selecionadas após importação e
-permanecer no cofre do n8n. Exports não devem conter valores reais.
+Somente 01, 02 e 03 permitem inspeção detalhada por MCP. Os demais aparecem no
+inventário, mas bloqueiam detalhes por configuração `Available in MCP`.
 
-**Não confirmado externamente:** workflows importados, IDs, versões, ativação,
-credenciais selecionadas, URLs, execuções, retries, retenção e saúde da instância
-Hostinger.
+**Problemas conhecidos:** `trust proxy` incompatível com o cabeçalho recebido,
+porta 32768 publicada diretamente, ausência de healthcheck Docker, warnings de
+PDF e entradas inválidas no registro MCP.
 
-## Hostinger
+**Segurança:** detalhes de execução podem carregar cursores privados. Consultas
+devem ser mínimas e sanitizadas; valores de credenciais permanecem no cofre.
 
-**Finalidade:** hospedar ou coordenar o dashboard Astro, n8n e o worker privado
-XLSX, conforme a arquitetura documentada.
+## Hostinger VPS 2004641
 
-**Verificado no repositório:** existe
-`workers/financial-xlsx/docker-compose.hostinger.example.yml`, com rede externa,
-segredo por arquivo, limite de 8 MiB e serviço sem porta publicada. Há runbooks
-de diagnóstico, health check, piloto e rollback em `docs/financial/`.
+**Finalidade:** hospedar n8n, Traefik e workers privados.
 
-**Segurança:** confirmar a rede real antes de instalar; não recriar nem remover a
-rede do n8n; manter segredo fora do Git; expor o worker apenas na rede privada.
+**Evidência operacional:** VPS em execução com 2 vCPU, 8 GB de RAM e 100 GB de
+disco. n8n, Traefik, financial-xlsx-worker e document-content-worker estavam em
+execução. Os workers estavam saudáveis e acessíveis pelo n8n na rede
+`n8n-mhbu_default`, sem portas publicadas.
 
-**Não confirmado externamente:** containers, rede, domínio, recursos, imagem
-implantada, versão do dashboard, health checks, backups e configuração de
-produção.
+O worker financeiro usava `fabio-financial-xlsx-worker:fix-bedfa3f`; o worker de
+conteúdo usava a imagem diagnóstica `fabio-document-content-worker:13c-diag-v1`.
+
+**Segurança pendente:** a porta pública 32768 e a ausência de firewall Hostinger
+associado precisam de correção planejada com backup e rollback. Nenhuma mudança
+de infraestrutura foi autorizada nesta etapa.
 
 ## Microsoft Graph e OneDrive
 
-**Finalidade:** manter arquivos Microsoft na origem e sincronizar catálogo e
-metadados no Supabase. Outlook é planejado para leitura, classificação, resumo e
-rascunho sujeito a aprovação.
+**Finalidade:** manter arquivos na origem e sincronizar catálogo e metadados.
 
-**Verificado no repositório:**
+**Evidência operacional:** a credencial Microsoft Drive está associada aos
+workflows MCP-visíveis. A execução detalhada do Delta Sync em 25/11/2026
+consultou o Microsoft Graph com sucesso e retornou `NoChanges`; o cursor foi
+confirmado atomicamente pelo Supabase.
 
-- `catalog.ts` lê `documents` e `onedrive_folders`;
-- a UI possui filtro, árvore, breadcrumb e abertura de itens OneDrive;
-- workflows financeiros usam endpoint de download do Microsoft Graph;
-- exports usam identificadores placeholder para escolha de credencial após
-  importação, sem segredo versionado;
-- a tela de configurações lê o estado registrado em `integrations` e a última
-  sincronização conhecida.
+**Ainda pendente:** inventário administrativo do App Registration, permissões
+concedidas, expiração/renovação e comportamento de erro. Cursores Delta são
+dados privados e não devem ser documentados.
 
-**Segurança:** usar menor privilégio, leitura antes de escrita, tokens em cofre
-do n8n/secret manager e aprovação humana para envio, alteração ou exclusão.
+## Workers privados
 
-**Não confirmado externamente:** App Registration, tenant, permissões concedidas,
-credenciais válidas, renovação de token, drives acessíveis, sincronização ativa,
-delta tokens, volume real do catálogo e funcionamento do Outlook.
+- `financial-xlsx-worker:8787`: health check HTTP 200 a partir do n8n, zero jobs
+  ativos na consulta e porta somente interna.
+- `document-content-worker:8788`: health check HTTP 200 a partir do n8n, imagem
+  diagnóstica e porta somente interna.
+
+Health check comprova processo e rede; não substitui piloto autenticado do
+endpoint de processamento. Pilotos continuam condicionados a autorização.

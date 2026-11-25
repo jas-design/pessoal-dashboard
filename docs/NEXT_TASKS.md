@@ -1,82 +1,81 @@
 # Próximas tarefas recomendadas
 
-Esta sequência prioriza evidência e segurança. Cada etapa deve atualizar
-`docs/STATUS.md` com o que foi realmente verificado. Nenhuma etapa autoriza
-deploy, alteração de banco ou ativação de workflow por si só.
+Prioridade atual: apresentar dados financeiros reais de janeiro a setembro de
+2026 sem reprocessar documentos já extraídos.
 
-Baseline local em 2026-11-21: check e build concluídos, 104 testes aprovados e
-3 testes de integração real ignorados. Repetir essa baseline após alterações de
-código.
+Baseline remota de 2026-11-25: 5.230 documentos, 40 fatos extraídos, 36 fatos
+em revisão, janeiro-agosto pendentes e setembro publicado. Nenhuma etapa abaixo
+autoriza aprovação ou publicação sem validação documental e autorização
+específica.
 
-## 1. Inventariar ambientes externos em modo somente leitura
+## 1. Validar setembro no produto
 
-- GitHub: confirmar branch padrão, commit remoto e proteções.
-- Supabase: listar migrations aplicadas, RPCs, policies e grants sem alterá-los.
-- n8n: comparar exports locais com workflows importados e manter tudo inativo.
-- Hostinger: confirmar containers, rede, recursos e health checks.
-- Microsoft: confirmar App Registration, permissões e saúde da autenticação sem
-  copiar tokens.
+- Abrir Dashboard e Financeiro sob sessão autenticada.
+- Selecionar empresa Kawana e setembro de 2026.
+- Conferir cards, gráficos, estado de publicação, filtros, console e consultas.
+- Registrar valores somente em evidência restrita; documentação compartilhada
+  deve usar resultado sanitizado.
 
-**Saída esperada:** matriz ambiente x commit/versão/estado, sem credenciais.
+**Gate:** setembro deve ser lido de `financial_monthly_metrics_published` sem
+erro de RLS ou fallback indevido para métricas legadas.
 
-## 2. Reconciliar contratos Supabase
+## 2. Preparar revisão de janeiro
 
-- Resolver a divergência documental dos clientes Supabase.
-- Comparar as migrations versionadas com o schema real.
-- Confirmar disponibilidade e ACLs das RPCs financeiras.
-- Manter produção em No-Go se backup, preflight ou autorização estiverem
-  incompletos.
+- Usar a matriz já preparada em
+  `docs/financial/FINANCIAL_DELIVERY_REVIEW_2026.md`; não repetir a extração.
+- Abrir o documento canônico v2 de janeiro e conferir visualmente `B23`, `B8`,
+  `B6` e `B10` nas abas registradas.
+- Isolar qualquer fato legado v1, documento secundário, versão antiga, ETag
+  divergente ou competência ambígua.
+- Produzir a matriz de revisão e solicitar autorização específica.
 
-**Saída esperada:** plano forward-only revisado e gates objetivos de Go/No-Go.
+**Gate:** exatamente um documento primário atual, quatro métricas canônicas e
+nenhuma divergência aberta.
 
-## 3. Validar o pipeline financeiro em ambiente isolado
+## 3. Aprovar e publicar janeiro somente após autorização
 
-- Subir o worker privado com segredo de teste e sem porta pública.
-- Executar os workflows locais inativos com fixture sintética.
-- Confirmar idempotência, timeout, limite de arquivo, logs seguros e
-  `publishable: false` antes da revisão.
-- Validar persistência, revisão e publicação com dados sintéticos.
+- Aprovar fatos individualmente por `finance_review_decide`, com justificativa
+  e revisão esperada.
+- Confirmar que aprovação não atualizou o Dashboard automaticamente.
+- Executar server-side `finance_publish_monthly_metrics` com empresa,
+  competência, IDs aprovados e ator autorizado.
+- Reconsultar status, linha publicada e Dashboard; repetir a consulta para
+  confirmar idempotência antes de avançar para fevereiro.
 
-**Saída esperada:** evidência ponta a ponta local/staging, sem dados reais.
+**Rollback lógico:** não alterar fatos extraídos; interromper ao primeiro erro
+de identidade, RLS, ETag, digest, competência ou cálculo.
 
-## 4. Preparar um piloto remoto controlado
+## 4. Expandir fevereiro-agosto
 
-- Confirmar backup recuperável e janela aprovada.
-- Importar workflow mantendo `Inactive` e `Manual Trigger`.
-- Selecionar credenciais existentes no cofre do n8n.
-- Processar um único documento autorizado e verificar que a repetição não cria
-  duplicidade.
-- Fazer rollback ao primeiro desvio de identidade, autorização ou auditoria.
+- Repetir o gate de janeiro mês a mês.
+- Antes de junho-agosto, resolver documentalmente a divergência entre receita
+  em `B24` no banco e `B23` no parser/workflow versionados.
+- Manter os quatro fatos legados v1 de agosto/setembro separados dos canônicos
+  v2; não usá-los para completar meses sem rastreabilidade equivalente.
+- Ao final, validar a série janeiro-setembro no Dashboard e Financeiro.
 
-**Saída esperada:** piloto auditável com decisão explícita de continuar ou parar.
+## 5. Corrigir segurança do n8n em janela própria
 
-## 5. Consolidar OneDrive e observabilidade
+- Confirmar que o domínio público funciona exclusivamente pelo Traefik antes de
+  remover o bind direto `32768`.
+- Associar firewall Hostinger com SSH restrito e HTTP/HTTPS públicos, validando
+  IPv4 e IPv6 e preservando a rede Docker interna.
+- Configurar a variável de proxy confiável compatível com a versão do n8n e a
+  quantidade real de proxies; validar rate limiting após a mudança.
+- Adicionar healthcheck Docker ao n8n usando endpoint local estável e sem
+  credenciais.
+- Fazer backup do compose e preparar rollback antes de qualquer aplicação.
 
-- Implementar/confirmar health check real separado do estado registrado na
-  tabela `integrations`.
-- Confirmar sincronização idempotente, hierarquia por drive, delta/retry e
-  atualização de `last_sync_at`.
-- Exibir estados degradados sem revelar detalhes sensíveis.
+## 6. Corrigir workflows de conteúdo sem duplicatas
 
-**Saída esperada:** integração observável e estados externos confiáveis na UI.
+- Inspecionar 13B e relacionar os warnings PDF ao node responsável.
+- Comparar as quatro cópias 13C e escolher um par canônico antes do piloto.
+- Atualizar nomes somente depois da validação; não reimportar duplicatas.
+- Manter 13C inativo até piloto explícito de planilha e OCR.
 
-## 6. Preparar o deploy do dashboard
+## 7. Renovar a baseline local
 
-- Confirmar a estratégia Astro atual e a necessidade de SSR/endpoints
-  server-side para operações sensíveis.
-- Configurar variáveis no provedor, executar build e validar autenticação/RLS.
-- Fazer smoke tests de login, dashboard, documentos, financeiro, revisão,
-  notificações e configurações.
-
-**Saída esperada:** release candidata ligada a um commit e checklist de rollback.
-
-## 7. Retomar funcionalidades posteriores
-
-Somente após a base operacional estar confirmada:
-
-1. Outlook e rascunhos com aprovação;
-2. extração de PDF/DOCX;
-3. comparação de documentos;
-4. RAG com fontes e auditoria;
-5. agente roteador com ferramentas allowlisted;
-6. executor de aprovações para ações sensíveis.
+- Executar `npm run check` e `npm run build`.
+- Executar `npm run test:financial-parser` e suites complementares relevantes.
+- Contabilizar testes aprovados, falhos e ignorados separadamente.
+- Atualizar `docs/STATUS.md` com resultados e bloqueios observados.
