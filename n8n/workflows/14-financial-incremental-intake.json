@@ -1,0 +1,977 @@
+{
+  "name": "14 - Financial incremental intake - parser 12A.3",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "fdabb062-0642-4643-b74b-475ef602f6be",
+      "name": "Manual trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Configure once in the private n8n instance. Never accept these settings from input.\nconst companyId = 'CONFIGURE_COMPANY_UUID';\nconst companyName = 'CONFIGURE_COMPANY_NAME';\nconst sourceRoot = '/drive/root:/CONFIGURE_SOURCE_FOLDER';\nconst batchExecutionApproved = false; // Enable after worker 12A.3 + credential pilot.\nconst input = $input.all();\nconst uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;\nif (!batchExecutionApproved) return [{json:{batchExecutionApproved:false,targets:[]}}];\nif (!uuid.test(companyId) || companyName.startsWith('CONFIGURE_') || sourceRoot.includes('CONFIGURE_')) throw new Error('configuration_required');\nif (input.length < 1 || input.length > 10) throw new Error('send_1_to_10_documents_per_call');\nconst ids = [...new Set(input.map(item => item.json.document_id))];\nif (ids.some(id => !uuid.test(String(id)))) throw new Error('invalid_document_id');\nreturn [{json:{batchExecutionApproved:true,companyId,companyName,sourceRoot,targets:ids.map((documentId,index)=>({documentId,sequence:index+1}))}}];"
+      },
+      "id": "ff054895-7502-4157-8bf5-555c7e117d16",
+      "name": "Define approved batch inventory",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "12b10000-0000-4000-8000-000000000101",
+              "leftValue": "={{ $json.batchExecutionApproved }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "0e61d75f-e34c-4c38-b700-5790ffbc5b9d",
+      "name": "Batch execution approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { status: 'blocked', stage: 'preflight', code: 'batch_execution_requires_explicit_code_review', expectedDocumentCount: 0, databaseWriteAttempted: false, documentDownloaded: false, publishable: false } }];"
+      },
+      "id": "c49c6921-4d19-42cb-8521-eb12ed550ba1",
+      "name": "Return blocked batch result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ 'https://CONFIGURE_PROJECT_REF.supabase.co/rest/v1/documents?id=in.(' + $json.targets.map((target) => target.documentId).join(',') + ')&select=id,owner_id,company_id,provider,is_deleted,processing_status,file_name,file_size,source_etag,external_drive_id,external_file_id,source_path,period_year,period_month' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 10000
+        }
+      },
+      "id": "efb33e28-925d-439f-9e8b-ceef1ccb7f97",
+      "name": "Fetch batch catalog metadata",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        -180
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SELECT_HOSTINGER_SUPABASE_CREDENTIAL_AFTER_IMPORT",
+          "name": "KAWANA_SUPABASE_SERVICE_ROLE"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ 'https://CONFIGURE_PROJECT_REF.supabase.co/rest/v1/financial_extracted_rows?document_id=in.(' + $('Define approved batch inventory').first().json.targets.map((target) => target.documentId).join(',') + ')&select=document_id,source_etag,metric,review_status,contract_version' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 10000
+        }
+      },
+      "id": "b12cda94-ff0b-431b-9ac9-6e2cd45acd9e",
+      "name": "Fetch existing facts for batch",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        -180
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SELECT_HOSTINGER_SUPABASE_CREDENTIAL_AFTER_IMPORT",
+          "name": "KAWANA_SUPABASE_SERVICE_ROLE"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "jsCode": "const definition = $('Build catalog targets').first().json;\nconst catalogResponse = $('Fetch batch catalog metadata').first().json;\nconst factsResponse = $input.first().json;\nconst normalizeArrayResponse = (response) => {\n  const statusCode = Number(response.statusCode);\n  let body = response.body;\n  if (typeof body === 'string') { try { body = JSON.parse(body); } catch { return { ok: false, body: [] }; } }\n  return { ok: Number.isInteger(statusCode) && statusCode >= 200 && statusCode < 300 && Array.isArray(body), body: Array.isArray(body) ? body : [] };\n};\nconst catalogResult = normalizeArrayResponse(catalogResponse);\nconst factsResult = normalizeArrayResponse(factsResponse);\nconst requiredMetrics = new Set(['revenue', 'expense', 'net_result', 'cash_available']);\nconst uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;\nconst isolated = (target, stage, code) => ({ json: { outcome: 'isolated', sequence: target.sequence, documentId: target.documentId, periodMonth: target.periodMonth, stage, code, publishable: false } });\nif (!catalogResult.ok) return definition.targets.map((target) => isolated(target, 'catalog', 'catalog_request_failed'));\nif (!factsResult.ok) return definition.targets.map((target) => isolated(target, 'catalog', 'existing_facts_request_failed'));\nreturn definition.targets.map((target) => {\n  const matches = catalogResult.body.filter((document) => document?.id === target.documentId);\n  if (matches.length !== 1) return isolated(target, 'catalog', matches.length === 0 ? 'catalog_document_missing' : 'catalog_document_not_unique');\n  const document = matches[0];\n  const etag = typeof document.source_etag === 'string' ? document.source_etag.trim() : '';\n  const secondCopy = /2[ªa]?\\s*via/i.test(String(document.file_name ?? ''));\n  const valid = uuid.test(String(document.owner_id ?? ''))\n    && document.company_id === target.companyId\n    && document.provider === 'onedrive'\n    && document.is_deleted === false\n    && document.processing_status === 'pending'\n    && document.file_name === target.fileName\n    && /^\\d{2}\\.\\d{4} Relat[oó]rio Gerencial Kawana\\.xlsx$/i.test(document.file_name)\n    && secondCopy === false\n    && Number.isSafeInteger(document.file_size)\n    && document.file_size >= 1\n    && document.file_size <= target.maxFileSize\n    && etag.length >= 1\n    && etag.length <= 512\n    && !/[\\u0000-\\u001f\\u007f]/.test(etag)\n    && typeof document.external_drive_id === 'string'\n    && document.external_drive_id.length > 0\n    && typeof document.external_file_id === 'string'\n    && document.external_file_id.length > 0\n    && typeof document.source_path === 'string'\n    && (document.source_path === target.sourceRoot || document.source_path.startsWith(target.sourceRoot + '/'))\n    && document.period_year === Number(target.periodMonth.slice(0, 4))\n    && document.period_month === Number(target.periodMonth.slice(5, 7));\n  if (!valid) return isolated(target, 'catalog', 'catalog_document_identity_mismatch');\n  const currentFacts = factsResult.body.filter((row) => row?.document_id === target.documentId && row?.source_etag === etag);\n  if (currentFacts.length > 0) {\n    const metrics = new Set(currentFacts.map((row) => row?.metric));\n    const complete = currentFacts.length === 4\n      && metrics.size === 4\n      && [...requiredMetrics].every((metric) => metrics.has(metric))\n      && currentFacts.every((row) => row?.contract_version === 2 && ['pending_review', 'approved', 'rejected'].includes(row?.review_status));\n    return { json: { outcome: complete ? 'already_processed' : 'isolated', sequence: target.sequence, documentId: target.documentId, periodMonth: target.periodMonth, stage: 'deduplication', code: complete ? 'current_etag_already_has_four_facts' : 'current_etag_has_partial_or_conflicting_facts', publishable: false } };\n  }\n  return { json: { outcome: 'eligible', sequence: target.sequence, target, catalog: { documentId: document.id, ownerId: document.owner_id, companyId: document.company_id, fileName: document.file_name, fileSize: document.file_size, sourceEtag: etag, externalDriveId: document.external_drive_id, externalFileId: document.external_file_id, sourcePath: document.source_path, periodMonth: target.periodMonth } } };\n});"
+      },
+      "id": "41db51ad-904c-440e-aa4a-7244002febb6",
+      "name": "Prepare independent batch items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        -180
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "aff139af-71f4-42b7-a83a-647ba7b91736",
+      "name": "Process documents sequentially",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1440,
+        -180
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "12b10000-0000-4000-8000-000000000102",
+              "leftValue": "={{ $json.outcome }}",
+              "rightValue": "eligible",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "821bc42b-48dc-493d-8204-527d126be546",
+      "name": "Catalog item eligible?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1680,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { status: $json.outcome === 'already_processed' ? 'already_processed' : 'isolated', sequence: $json.sequence, documentId: $json.documentId, periodMonth: $json.periodMonth, stage: $json.stage ?? 'catalog', code: $json.code ?? 'catalog_item_not_eligible', factsPersisted: 0, publishable: false } }];"
+      },
+      "id": "25afc399-19b9-4e0f-8494-2aaad025ef7e",
+      "name": "Return catalog or duplicate result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ 'https://graph.microsoft.com/v1.0/drives/' + encodeURIComponent($json.catalog.externalDriveId) + '/items/' + encodeURIComponent($json.catalog.externalFileId) + '/content' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "microsoftOAuth2Api",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "file",
+              "outputPropertyName": "data"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "d9b91394-1ba8-4944-89a3-9ff6e27aef2d",
+      "name": "Download original XLSX from Graph",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1920,
+        -240
+      ],
+      "credentials": {
+        "microsoftOAuth2Api": {
+          "id": "SELECT_HOSTINGER_GRAPH_CREDENTIAL_AFTER_IMPORT",
+          "name": "KAWANA_MICROSOFT_GRAPH_READ"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst context = $('Process documents sequentially').item.json;\nconst invalid = (code) => [{ json: { outcome: 'isolated', sequence: context.sequence, documentId: context.target.documentId, periodMonth: context.target.periodMonth, stage: 'download', code, publishable: false } }];\nif (!item.binary?.data) return invalid('graph_download_missing_binary');\nconst mimeType = String(item.binary.data.mimeType ?? '');\nif (mimeType && mimeType !== 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') return invalid('graph_download_invalid_mime');\nif (context.catalog.fileSize < 1 || context.catalog.fileSize > context.target.maxFileSize || !context.catalog.fileName.toLowerCase().endsWith('.xlsx')) return invalid('document_size_or_extension_invalid');\nreturn [{ json: { ...context, outcome: 'download_valid' }, binary: item.binary }];"
+      },
+      "id": "a0149c6b-054c-4410-af78-7cee53524659",
+      "name": "Validate downloaded original XLSX",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "12b10000-0000-4000-8000-000000000103",
+              "leftValue": "={{ $json.outcome }}",
+              "rightValue": "download_valid",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "e8f90ac4-5290-48f6-a455-d023a50aa277",
+      "name": "Downloaded XLSX valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2400,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { status: 'isolated', sequence: $json.sequence, documentId: $json.documentId, periodMonth: $json.periodMonth, stage: $json.stage ?? 'download', code: $json.code ?? 'download_validation_failed', factsPersisted: 0, publishable: false } }];"
+      },
+      "id": "5e835c7c-c6fe-402a-9441-3ecc85f3c8db",
+      "name": "Return preclaim isolated result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://financial-xlsx-worker:8787/v1/extractions/xlsx",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            },
+            {
+              "name": "X-Financial-Mapping-Id",
+              "value": "={{ $json.target.mappingId }}"
+            },
+            {
+              "name": "X-Financial-Mapping-Version",
+              "value": "={{ $json.target.mappingVersion }}"
+            },
+            {
+              "name": "X-Financial-Company-Id",
+              "value": "={{ $json.catalog.companyId }}"
+            },
+            {
+              "name": "X-Financial-Company-Name",
+              "value": "={{ encodeURIComponent($json.target.companyName) }}"
+            },
+            {
+              "name": "X-Financial-Document-Id",
+              "value": "={{ $json.catalog.documentId }}"
+            },
+            {
+              "name": "X-Financial-Document-Name",
+              "value": "={{ encodeURIComponent($json.catalog.fileName) }}"
+            },
+            {
+              "name": "X-Financial-Document-Etag",
+              "value": "={{ $json.catalog.sourceEtag }}"
+            },
+            {
+              "name": "X-Financial-External-File-Id",
+              "value": "={{ encodeURIComponent($json.catalog.externalFileId) }}"
+            },
+            {
+              "name": "X-Financial-Period-Month",
+              "value": "={{ $json.target.periodMonth }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 40000
+        }
+      },
+      "id": "04323bcc-df1f-4123-8dbb-a3d24abb1358",
+      "name": "Validate file with worker 12A.3",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2640,
+        -320
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SELECT_HOSTINGER_WORKER_CREDENTIAL_AFTER_IMPORT",
+          "name": "KAWANA_FINANCIAL_XLSX_WORKER"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst context = $('Validate downloaded original XLSX').item.json;\nconst { target, catalog } = context;\nconst statusCode = Number(response.statusCode);\nlet extraction = response.body;\nif (typeof extraction === 'string') { try { extraction = JSON.parse(extraction); } catch { extraction = null; } }\nconst requiredSheets = ['CAPA','RESUMO KWM','Fluxo de Caixa ' + target.periodMonth.slice(0,4),'ATIVO X PASSIVO KWN','ATIVOS KWN','PASSIVO KWN','RECEITAS X DESPESAS KWN','RECEITAS KWN','DESPESAS KWN','Itaú Kawana','Bradesco Invest Fácil Kawana','Bradesco Kawana','Caixa Kawana'];\nconst expectedSources = { cash_available: ['RESUMO KWM', 'B10'], revenue: ['RECEITAS X DESPESAS KWN', 'B23'], expense: ['RECEITAS X DESPESAS KWN', 'B8'], net_result: ['RECEITAS X DESPESAS KWN', 'B6'] };\nconst expectedReconciliations = new Set(['combined_result_equals_revenue_minus_expense','revenue_detail_matches_combined','expense_detail_matches_combined','summary_bank_components_match_total','bank_statement_balances_match_summary']);\nconst isolated = (code) => [{ json: { outcome: 'isolated', sequence: context.sequence, documentId: target.documentId, periodMonth: target.periodMonth, stage: 'worker_validation', code, publishable: false } }];\nconst decimalMinor = (amount) => { const match = String(amount ?? '').match(/^(-?)(\\d+)\\.(\\d{2})$/); if (!match) return null; return ((match[1] === '-' ? -1n : 1n) * (BigInt(match[2]) * 100n + BigInt(match[3]))); };\ntry {\n  if (statusCode !== 200) return isolated('worker_request_failed');\n  if (!extraction || extraction.schemaVersion !== 'financial-extraction.v1' || extraction.status !== 'needs_review' || extraction.publishable !== false) throw new Error('invalid_extraction_contract');\n  if (extraction.metadata?.mapping?.id !== target.mappingId || extraction.metadata?.mapping?.version !== target.mappingVersion || extraction.metadata?.mapping?.parserVersion !== target.parserVersion) throw new Error('mapping_or_parser_mismatch');\n  if (extraction.metadata?.company?.id !== target.companyId || extraction.metadata?.company?.name !== target.companyName || extraction.metadata?.document?.id !== target.documentId || extraction.metadata?.document?.etag !== catalog.sourceEtag || extraction.metadata?.document?.fileName !== target.fileName || extraction.metadata?.periodMonth !== target.periodMonth) throw new Error('extraction_identity_mismatch');\n  const sheets = extraction.metadata?.sheets;\n  if (extraction.metadata?.sheetCount !== 13 || !Array.isArray(sheets) || sheets.length !== requiredSheets.length || requiredSheets.some((sheet) => !sheets.includes(sheet))) throw new Error('required_sheet_structure_mismatch');\n  if (extraction.statistics?.formulaErrorCount !== 0 || extraction.statistics?.duplicateFactCount !== 0) throw new Error('formula_or_duplicate_fact_error');\n  if (!Array.isArray(extraction.warnings) || extraction.warnings.some((warning) => warning?.severity === 'error')) throw new Error('extraction_contains_error_warning');\n  if (!Array.isArray(extraction.reconciliations) || extraction.reconciliations.length !== 5) throw new Error('reconciliation_count_mismatch');\n  const reconciliationCodes = new Set(extraction.reconciliations.map((item) => item?.code));\n  if (reconciliationCodes.size !== 5 || extraction.reconciliations.some((item) => item?.status !== 'passed') || [...expectedReconciliations].some((code) => !reconciliationCodes.has(code))) throw new Error('financial_reconciliation_failed');\n  if (!Array.isArray(extraction.facts) || !Array.isArray(extraction.bankTransactions)) throw new Error('invalid_extraction_payload');\n  const canonical = extraction.facts.filter((fact) => fact?.includedInConsolidatedKpi === true && fact?.aggregationLevel === 'canonical');\n  const metrics = Object.keys(expectedSources);\n  if (canonical.length !== 4 || new Set(canonical.map((fact) => fact.metricCode)).size !== 4 || metrics.some((metric) => !canonical.some((fact) => fact.metricCode === metric))) throw new Error('missing_or_duplicate_required_canonical_fact');\n  const factByMetric = Object.fromEntries(canonical.map((fact) => [fact.metricCode, fact]));\n  const monthlyColumns = ['revenue','expense','net_result'].map(metric => String(factByMetric[metric]?.evidence?.cellAddress ?? '').replace(/[0-9]+$/, ''));\n  if (new Set(monthlyColumns).size !== 1) throw new Error('monthly_columns_mismatch');\n  const minors = Object.fromEntries(metrics.map((metric) => [metric, decimalMinor(factByMetric[metric]?.amount)]));\n  if (metrics.some((metric) => minors[metric] === null || String(minors[metric]) !== String(factByMetric[metric]?.amountMinor))) throw new Error('invalid_financial_amount');\n  if (minors.revenue < 0n || minors.expense < 0n || minors.cash_available < 0n || minors.net_result !== minors.revenue - minors.expense) throw new Error('invalid_financial_sign_or_result');\n  const rows = metrics.map((metricCode) => {\n    const fact = factByMetric[metricCode];\n    const [expectedSheet, expectedCell] = expectedSources[metricCode];\n    if (fact.companyId !== target.companyId || fact.companyName !== target.companyName || fact.documentId !== target.documentId || fact.sourceEtag !== catalog.sourceEtag || fact.periodMonth !== target.periodMonth || fact.currency !== 'BRL' || fact.reviewStatus !== 'needs_review' || fact.sourceScope !== 'business') throw new Error('invalid_canonical_fact');\n    const sheet = String(fact.evidence?.sheet ?? '').trim();\n    const sourceCell = String(fact.evidence?.cellAddress ?? '');\n    if (sheet !== expectedSheet || (metricCode === 'cash_available' ? sourceCell !== 'B10' : !/^(?:[C-Z]|[A-Z]{2,3})(?:6|8|23|24)$/.test(sourceCell)) || (metricCode === 'revenue' && !/(23|24)$/.test(sourceCell)) || (metricCode === 'expense' && !/8$/.test(sourceCell)) || (metricCode === 'net_result' && !/6$/.test(sourceCell))) throw new Error('canonical_source_mismatch');\n    const sourceRow = Number(sourceCell.match(/(\\d+)$/)?.[1] ?? 0);\n    const logicalKey = [target.documentId, catalog.sourceEtag, sheet, sourceCell, metricCode, target.periodMonth].join(':');\n    if (!Number.isSafeInteger(sourceRow) || sourceRow <= 0 || fact.logicalKey !== logicalKey) throw new Error('invalid_fact_provenance');\n    return { logical_key: logicalKey, company_id: target.companyId, company_name: target.companyName, month: target.periodMonth + '-01', metric_code: metricCode, amount: fact.amount, currency: 'BRL', sheet, source_row: sourceRow, source_cell: sourceCell, review_status: 'needs_review' };\n  });\n  return [{ json: { outcome: 'worker_valid', sequence: context.sequence, target, catalog, rows, reconciliationCount: 5, deferredFactCount: extraction.facts.length - rows.length, deferredBankTransactionCount: extraction.bankTransactions.length } }];\n} catch (error) { return isolated(error instanceof Error ? error.message : 'invalid_extraction_contract'); }"
+      },
+      "id": "34cb9659-f531-4b39-a306-57bfd54075e4",
+      "name": "Validate worker result before claim",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2880,
+        -320
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "12b10000-0000-4000-8000-000000000104",
+              "leftValue": "={{ $json.outcome }}",
+              "rightValue": "worker_valid",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "4361546d-fc14-4a9d-a315-a597f2df0543",
+      "name": "Worker validation passed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3120,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { status: 'isolated', sequence: $json.sequence, documentId: $json.documentId, periodMonth: $json.periodMonth, stage: $json.stage ?? 'worker_validation', code: $json.code ?? 'worker_validation_failed', factsPersisted: 0, publishable: false } }];"
+      },
+      "id": "558257fc-f44f-446f-8db8-89f08f58b3ee",
+      "name": "Return worker isolated result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3360,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://CONFIGURE_PROJECT_REF.supabase.co/rest/v1/rpc/finance_claim_document_v2",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ { p_document_id: $json.target.documentId, p_company_id: $json.target.companyId, p_source_etag: $json.catalog.sourceEtag, p_period_month: $json.target.periodMonth + '-01' } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 10000
+        }
+      },
+      "id": "03196784-41a5-44e9-a341-6f22ef38fe2d",
+      "name": "Claim validated document v2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3360,
+        -400
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SELECT_HOSTINGER_SUPABASE_CREDENTIAL_AFTER_IMPORT",
+          "name": "KAWANA_SUPABASE_SERVICE_ROLE"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst context = $('Validate worker result before claim').item.json;\nconst statusCode = Number(response.statusCode);\nlet body = response.body;\nif (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = null; } }\nif (Array.isArray(body)) { if (body.length === 1) [body] = body; else body = null; }\nconst isolated = (code) => [{ json: { outcome: 'isolated', sequence: context.sequence, documentId: context.target.documentId, periodMonth: context.target.periodMonth, stage: 'claim', code, publishable: false } }];\nif (!Number.isInteger(statusCode) || statusCode < 200 || statusCode >= 300) return isolated('claim_request_failed_or_duplicate');\nconst uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;\nconst valid = body?.has_document === true && body?.contract_version === 2 && body?.document_id === context.target.documentId && body?.owner_id === context.catalog.ownerId && body?.company_id === context.target.companyId && body?.company_name === context.target.companyName && body?.source_etag === context.catalog.sourceEtag && body?.file_name === context.target.fileName && body?.file_size === context.catalog.fileSize && body?.external_drive_id === context.catalog.externalDriveId && body?.external_file_id === context.catalog.externalFileId && body?.source_path === context.catalog.sourcePath && body?.extension === 'xlsx' && body?.period_month === context.target.periodMonth && uuid.test(String(body?.claim_id ?? ''));\nif (!valid) return isolated('claimed_document_identity_mismatch');\nreturn [{ json: { outcome: 'claim_valid', sequence: context.sequence, documentId: context.target.documentId, periodMonth: context.target.periodMonth, rpcPayload: { p_document_id: context.target.documentId, p_claim_id: body.claim_id, p_source_etag: context.catalog.sourceEtag, p_status: 'needs_review', p_rows: context.rows, p_note: 'financial-extraction.v1 canonical facts; manual sequential batch 12B', p_excerpt: null } } }];"
+      },
+      "id": "0c8fe520-b3ee-418e-8a84-b18a07212f70",
+      "name": "Validate claim and build completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3600,
+        -400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "12b10000-0000-4000-8000-000000000105",
+              "leftValue": "={{ $json.outcome }}",
+              "rightValue": "claim_valid",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a3f49192-8944-4783-bca3-269059168b31",
+      "name": "Claim valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3840,
+        -320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { status: 'isolated', sequence: $json.sequence, documentId: $json.documentId, periodMonth: $json.periodMonth, stage: $json.stage ?? 'claim', code: $json.code ?? 'claim_validation_failed', factsPersisted: 0, publishable: false } }];"
+      },
+      "id": "d1c698da-2fde-4992-96e3-e4779a59d79d",
+      "name": "Return claim isolated result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4080,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://CONFIGURE_PROJECT_REF.supabase.co/rest/v1/rpc/finance_complete_document_v2",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.rpcPayload }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "id": "815be364-99dd-4939-a208-1dd433ab187f",
+      "name": "Complete validated document v2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4080,
+        -480
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SELECT_HOSTINGER_SUPABASE_CREDENTIAL_AFTER_IMPORT",
+          "name": "KAWANA_SUPABASE_SERVICE_ROLE"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst context = $('Validate claim and build completion').item.json;\nconst statusCode = Number(response.statusCode);\nlet body = response.body;\nif (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = null; } }\nif (Array.isArray(body)) { if (body.length === 1) [body] = body; else body = null; }\nconst valid = Number.isInteger(statusCode) && statusCode >= 200 && statusCode < 300 && body?.success === true && body?.contract_version === 2 && body?.document_id === context.documentId && body?.status === 'needs_review' && Number.isInteger(body?.inserted_rows) && Number.isInteger(body?.unchanged_rows) && body.inserted_rows + body.unchanged_rows === 4 && body?.requires_approval === true;\nif (!valid) return [{ json: { status: 'isolated', sequence: context.sequence, documentId: context.documentId, periodMonth: context.periodMonth, stage: 'completion', code: 'completion_unconfirmed', factsPersisted: null, publishable: false } }];\nreturn [{ json: { status: 'pending_review', sequence: context.sequence, documentId: context.documentId, periodMonth: context.periodMonth, stage: 'completed', code: 'four_canonical_facts_ready_for_review', factsPersisted: body.inserted_rows, unchangedFacts: body.unchanged_rows, requiresApproval: true, publishable: false } }];"
+      },
+      "id": "8cfe1940-403b-40fc-9663-8bcdd229a4ee",
+      "name": "Return independent document result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4320,
+        -480
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = $input.all().map((item) => item.json).sort((left, right) => Number(left.sequence ?? 99) - Number(right.sequence ?? 99));\nreturn [{ json: { status: 'batch_completed', expectedDocuments: $('Build catalog targets').first().json.targets.length, resultCount: results.length, pendingReview: results.filter((item) => item.status === 'pending_review').length, alreadyProcessed: results.filter((item) => item.status === 'already_processed').length, isolated: results.filter((item) => item.status === 'isolated').length, automaticApproval: false, automaticPublication: false, results: results.map((item) => ({ sequence: item.sequence, documentId: item.documentId, periodMonth: item.periodMonth, status: item.status, stage: item.stage, code: item.code, factsPersisted: item.factsPersisted, publishable: false })) } }];"
+      },
+      "id": "2b92577f-0e3a-4e19-860a-095850502f7a",
+      "name": "Summarize sanitized batch results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        -420
+      ]
+    },
+    {
+      "id": "57b51e73-37ed-4dea-a6ef-efc8727aea28",
+      "name": "Build catalog targets",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const config = $('Define approved batch inventory').first().json;\nconst response = $input.first().json;\nlet rows = response.body;\nif (typeof rows === 'string') { try { rows = JSON.parse(rows); } catch { rows = null; } }\nif (response.statusCode !== 200 || !Array.isArray(rows)) throw new Error('catalog_unavailable');\nconst targets = config.targets.map(target => {\n const matches = rows.filter(row => row.id === target.documentId);\n if (matches.length !== 1) throw new Error('catalog_identity_missing_or_duplicate');\n const row = matches[0];\n if (row.company_id !== config.companyId || !Number.isInteger(row.period_year) || row.period_year < 2000 || row.period_year > 2100 || !Number.isInteger(row.period_month) || row.period_month < 1 || row.period_month > 12) throw new Error('catalog_scope_or_period_invalid');\n return {...target,companyId:config.companyId,companyName:config.companyName,sourceRoot:config.sourceRoot,fileName:row.file_name,periodMonth:`${row.period_year}-${String(row.period_month).padStart(2,'0')}`,mappingId:'kawana-management-report',mappingVersion:'2',parserVersion:'12A.3',maxFileSize:8388608};\n});\nreturn [{json:{...config,targets}}];"
+      }
+    }
+  ],
+  "connections": {
+    "Manual trigger": {
+      "main": [
+        [
+          {
+            "node": "Define approved batch inventory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Define approved batch inventory": {
+      "main": [
+        [
+          {
+            "node": "Batch execution approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Batch execution approved?": {
+      "main": [
+        [
+          {
+            "node": "Fetch batch catalog metadata",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return blocked batch result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch batch catalog metadata": {
+      "main": [
+        [
+          {
+            "node": "Build catalog targets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch existing facts for batch": {
+      "main": [
+        [
+          {
+            "node": "Prepare independent batch items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare independent batch items": {
+      "main": [
+        [
+          {
+            "node": "Process documents sequentially",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process documents sequentially": {
+      "main": [
+        [
+          {
+            "node": "Summarize sanitized batch results",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Catalog item eligible?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Catalog item eligible?": {
+      "main": [
+        [
+          {
+            "node": "Download original XLSX from Graph",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return catalog or duplicate result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Return catalog or duplicate result": {
+      "main": [
+        [
+          {
+            "node": "Process documents sequentially",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download original XLSX from Graph": {
+      "main": [
+        [
+          {
+            "node": "Validate downloaded original XLSX",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate downloaded original XLSX": {
+      "main": [
+        [
+          {
+            "node": "Downloaded XLSX valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Downloaded XLSX valid?": {
+      "main": [
+        [
+          {
+            "node": "Validate file with worker 12A.3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return preclaim isolated result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Return preclaim isolated result": {
+      "main": [
+        [
+          {
+            "node": "Process documents sequentially",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate file with worker 12A.3": {
+      "main": [
+        [
+          {
+            "node": "Validate worker result before claim",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate worker result before claim": {
+      "main": [
+        [
+          {
+            "node": "Worker validation passed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Worker validation passed?": {
+      "main": [
+        [
+          {
+            "node": "Claim validated document v2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return worker isolated result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Return worker isolated result": {
+      "main": [
+        [
+          {
+            "node": "Process documents sequentially",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claim validated document v2": {
+      "main": [
+        [
+          {
+            "node": "Validate claim and build completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate claim and build completion": {
+      "main": [
+        [
+          {
+            "node": "Claim valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claim valid?": {
+      "main": [
+        [
+          {
+            "node": "Complete validated document v2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return claim isolated result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Return claim isolated result": {
+      "main": [
+        [
+          {
+            "node": "Process documents sequentially",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Complete validated document v2": {
+      "main": [
+        [
+          {
+            "node": "Return independent document result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Return independent document result": {
+      "main": [
+        [
+          {
+            "node": "Process documents sequentially",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build catalog targets": {
+      "main": [
+        [
+          {
+            "node": "Fetch existing facts for batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "saveDataErrorExecution": "none",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false,
+    "executionTimeout": 900
+  }
+}
