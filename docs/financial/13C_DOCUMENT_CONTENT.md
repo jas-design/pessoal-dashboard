@@ -222,3 +222,16 @@ A release de diagnóstico está em `workers/document-content/compose.yml`, com
 imagem `13c-diag-v1` e usuário `1000:1000`. Siga
 [as instruções de atualização e rollback](../../workers/document-content/README.md).
 Os scripts de instalação originais 13c-v1 não fazem parte desta release.
+
+## Atualização operacional informada em 25/11/2026
+
+O usuário trouxe resultado do Codex/VS Code: imagem 13c-diag-v1 instalada na VPS,
+commit a6329383066253acf8523cbce6351e9da400ff92, running/healthy e UID 1000:1000.
+CSV sintético e invalid_xls passaram; rascunho de planilhas gravou content_limit
+pela RPC. As quatro cópias 13C estão pausadas. Sucesso ponta a ponta de planilha
+e OCR ainda pendente por falta de candidato elegível. Este relato substitui o
+estado histórico de implantação pendente; não é nova inspeção remota nesta sessão.
+
+Workflow manual de GitHub Actions preparado no PR #2, com rollback, sem migrations
+ou ativação n8n. Falta configurar environment/secrets e integrar o workflow à main
+antes da primeira execução. Procedimento em workers/document-content/README.md.

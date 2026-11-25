@@ -104,3 +104,16 @@ Git. Consulte `docs/financial/13C_DOCUMENT_CONTENT.md` para evidências e limite
 A migration de diagnóstico foi aplicada; os novos workflows são rascunhos inativos.
 A VPS continua na imagem 13c-v1 segundo a verificação MCP fornecida pelo usuário;
 a imagem 13c-diag-v1 e seu piloto ainda não foram implantados.
+
+## Atualização operacional informada em 25/11/2026
+
+O usuário trouxe resultado do Codex/VS Code: imagem 13c-diag-v1 instalada na VPS,
+commit a6329383066253acf8523cbce6351e9da400ff92, running/healthy e UID 1000:1000.
+CSV sintético e invalid_xls passaram; rascunho de planilhas gravou content_limit
+pela RPC. As quatro cópias 13C estão pausadas. Sucesso ponta a ponta de planilha
+e OCR ainda pendente por falta de candidato elegível. Este relato substitui o
+estado histórico de implantação pendente; não é nova inspeção remota nesta sessão.
+
+Workflow manual de GitHub Actions preparado no PR #2, com rollback, sem migrations
+ou ativação n8n. Falta configurar environment/secrets e integrar o workflow à main
+antes da primeira execução. Procedimento em workers/document-content/README.md.
