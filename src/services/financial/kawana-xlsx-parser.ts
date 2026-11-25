@@ -407,7 +407,13 @@ function parseConsolidatedCanonicalFacts(
   requireCellText(summary, "A10", "TOTAL");
   requireCellText(combined, "A6", "Resultado");
   requireCellText(combined, "A8", "Despesa");
-  requireCellText(combined, "A23", "Receita");
+  // Os originais de junho a agosto incluem mais uma categoria de despesa.
+  const revenueRows = [23, 24].filter((row) =>
+    normalizeSheetName(cellText(combined, `A${row}`)) === normalizeSheetName("Receita"));
+  if (revenueRows.length !== 1) {
+    throw new Error("A receita consolidada deve possuir uma única origem autorizada em A23 ou A24.");
+  }
+  const revenueAddress = `B${revenueRows[0]}`;
 
   const expense = readNumericCell(combined.getCell("B8"));
   if (!expense || expense.value >= 0) {
@@ -420,7 +426,7 @@ function parseConsolidatedCanonicalFacts(
     category: "balance", sourceScope: "business", accountingBasis: "cash",
     includedInConsolidatedKpi: true, aggregationLevel: "canonical",
   });
-  requireCellFact(facts, seen, context, combined, "B23", {
+  requireCellFact(facts, seen, context, combined, revenueAddress, {
     periodMonth, metricCode: "revenue", indicator: "Receitas realizadas",
     category: "realized", sourceScope: "business", accountingBasis: "unspecified",
     includedInConsolidatedKpi: true, aggregationLevel: "canonical",
@@ -737,7 +743,11 @@ function buildLegacyReconciliations(
 }
 
 function buildConsolidatedReconciliations(facts: FinancialFact[]) {
-  const revenue = getFactMinor(facts, "RECEITAS X DESPESAS KWN", "B23");
+  const revenueFact = facts.find((fact) => fact.metricCode === "revenue"
+    && fact.aggregationLevel === "canonical"
+    && fact.evidence.sheet === "RECEITAS X DESPESAS KWN");
+  const revenue = revenueFact ? Number(revenueFact.amountMinor) : null;
+  const revenueSource = `RECEITAS X DESPESAS KWN!${revenueFact?.evidence.cellAddress ?? "origem ausente"}`;
   const expense = getFactMinor(facts, "RECEITAS X DESPESAS KWN", "B8");
   const result = getFactMinor(facts, "RECEITAS X DESPESAS KWN", "B6");
   const cash = getFactMinor(facts, "RESUMO KWM", "B10");
@@ -757,7 +767,7 @@ function buildConsolidatedReconciliations(facts: FinancialFact[]) {
       revenue !== null && expense !== null ? revenue - expense : null,
       result,
       [
-        "RECEITAS X DESPESAS KWN!B23",
+        revenueSource,
         "RECEITAS X DESPESAS KWN!B8",
         "RECEITAS X DESPESAS KWN!B6",
       ],
@@ -766,7 +776,7 @@ function buildConsolidatedReconciliations(facts: FinancialFact[]) {
       "revenue_detail_matches_combined",
       getFactMinor(facts, "RECEITAS KWN", "B6"),
       revenue,
-      ["RECEITAS KWN!B6", "RECEITAS X DESPESAS KWN!B23"],
+      ["RECEITAS KWN!B6", revenueSource],
     ),
     reconciliation(
       "expense_detail_matches_combined",
