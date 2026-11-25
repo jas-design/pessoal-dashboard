@@ -1,0 +1,615 @@
+{
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "f1b09499-d660-4368-873d-822cc8270e6a",
+      "name": "Manual pilot",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://xjxwyzyfnumfphubuize.supabase.co/rest/v1/rpc/document_content_claim",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"p_owner_id\": \"853de8e7-8bce-412b-8a6b-a11a12d3efff\", \"p_mode\": \"ocr\"}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "22c1e747-92d6-4ca2-8706-6ab2a16a919f",
+      "name": "Claim next content",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        208
+      ],
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "M0YKGnciV5S1gwQi",
+          "name": "Supabase KAWANA - Admin"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const d=$input.first().json;\nif(d.has_document===false) return [];\nif(d.has_document!==true||!d.claim_id||!d.id||d.owner_id!=='853de8e7-8bce-412b-8a6b-a11a12d3efff'||d.provider!=='onedrive'||d.is_deleted!==false) throw new Error('Invalid candidate');\nif(!/^\\/drive\\/root:\\/Deskboard KPIs(?:\\/|$)/.test(d.source_path)||!d.external_drive_id||!d.external_file_id||!d.source_etag||!/^.*\\.(xlsx|xls|csv|pdf)$/i.test(d.file_name)||d.file_size<1||d.file_size>8388608) throw new Error('Unsupported source');\nif(!['xlsx','xls','csv','ocr'].includes(d.kind)) throw new Error('Unsupported kind');\nreturn [{json:d}];\n"
+      },
+      "id": "1d319c58-5d45-4651-b035-240de7689341",
+      "name": "Validate candidates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        208
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://graph.microsoft.com/v1.0/drives/' + $json.external_drive_id + '/items/' + $json.external_file_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "microsoftOneDriveOAuth2Api",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "f4da9a11-a548-4c5a-a72c-4778cefb84d3",
+      "name": "Read Graph metadata",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        208
+      ],
+      "credentials": {
+        "microsoftOneDriveOAuth2Api": {
+          "id": "d7MS5LitLR99Jzzb",
+          "name": "Microsoft Drive account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((item,index)=>{\n const m=item.json, d=$('Validate candidates').itemMatching(index).json;\n if(m.id!==d.external_file_id||m.parentReference?.driveId!==d.external_drive_id||m.eTag!==d.source_etag||m.size!==d.file_size||!m.file||!({xlsx:['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],xls:['application/vnd.ms-excel'],csv:['text/csv','text/plain','application/csv','application/vnd.ms-excel'],ocr:['application/pdf']}[d.kind]||[]).includes(m.file.mimeType)) throw new Error('Source identity, version or MIME mismatch');\n const url=m['@microsoft.graph.downloadUrl'];\n if(typeof url!=='string'||/[\\s\\\\]/.test(url)||!/^https:\\/\\/(?:[a-z0-9-]+\\.)*(?:sharepoint\\.com|1drv\\.com|onedrive\\.com)(?::443)?\\//i.test(url)) throw new Error('Untrusted download URL');\n return {json:{...d,download_url:url},pairedItem:{item:index}};\n});"
+      },
+      "id": "41f826ae-732f-42d2-b084-817f7b88dab2",
+      "name": "Validate source and download",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        208
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.download_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          },
+          "timeout": 120000,
+          "sendCredentialsOnCrossOriginRedirect": false
+        }
+      },
+      "id": "f23883d9-75ac-4eb6-8fa4-f43ada7fdc89",
+      "name": "Download content without credentials",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        208
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d=$('Validate candidates').first().json;\nconst b=await this.helpers.getBinaryDataBuffer(0,'data');\nif(b.length!==d.file_size||b.length>8388608) throw new Error('Size mismatch');\nif(d.kind==='xlsx'&&b.subarray(0,2).toString()!=='PK') throw new Error('Signature mismatch');\nif(d.kind==='xls'&&b.subarray(0,8).toString('hex')!=='d0cf11e0a1b11ae1') throw new Error('Signature mismatch');\nif(d.kind==='ocr'&&b.subarray(0,5).toString()!=='%PDF-') throw new Error('Signature mismatch');\nreturn [{json:{kind:d.kind},binary:$input.first().binary}];"
+      },
+      "id": "926a8026-621d-49b8-81ba-80fbf153b40f",
+      "name": "Validate content binary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        208
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://document-content-worker:8788/extract/' + $json.kind }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {
+          "timeout": 200000,
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "4a2b129b-3fed-4bcb-8321-08b0a8f043d4",
+      "name": "Extract document content",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1680,
+        208
+      ],
+      "onError": "continueErrorOutput",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SELECT_EXISTING_FINANCIAL_WORKER_BEARER_CREDENTIAL",
+          "name": "KAWANA_FINANCIAL_XLSX_WORKER"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const d=$('Validate candidates').first().json,r=$input.first().json;\nif(typeof r.text!=='string'||r.text.length<1||r.text.length>900000||r.metadata?.kind!==d.kind||r.metadata?.version!=='13c-v1'||!(/^[a-f0-9]{64}$/).test(r.metadata?.sha256)||r.financial_facts_created!==0) throw new Error('Invalid worker result');\nreturn [{json:{document:d,payload:{p_document_id:d.id,p_claim_id:d.claim_id,p_source_etag:d.source_etag,p_status:'extracted',p_text:r.text,p_metadata:r.metadata,p_execution_id:String($execution.id)}}}];"
+      },
+      "id": "0003da4f-1b28-4c30-9c53-5bfc3307b44f",
+      "name": "Prepare text and provenance",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        208
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://graph.microsoft.com/v1.0/drives/' + $json.document.external_drive_id + '/items/' + $json.document.external_file_id + '?$select=id,eTag,size' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "microsoftOneDriveOAuth2Api",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "123d8429-d1e6-4091-824b-af142947b7b5",
+      "name": "Recheck Graph version",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2160,
+        208
+      ],
+      "credentials": {
+        "microsoftOneDriveOAuth2Api": {
+          "id": "d7MS5LitLR99Jzzb",
+          "name": "Microsoft Drive account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((item,index)=>{\n const p=$('Prepare text and provenance').itemMatching(index).json;\n if(item.json.id!==p.document.external_file_id||item.json.eTag!==p.document.source_etag||item.json.size!==p.document.file_size) throw new Error('Source changed during extraction');\n return {json:p,pairedItem:{item:index}};\n});"
+      },
+      "id": "b024cf1f-d8f5-45e7-84a1-ca3295f79dcf",
+      "name": "Check unchanged version",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        208
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://xjxwyzyfnumfphubuize.supabase.co/rest/v1/rpc/document_content_complete",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.payload }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "0b62d2fe-a814-4615-a8a7-db38d9be62be",
+      "name": "Save text with version guard",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2640,
+        208
+      ],
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "M0YKGnciV5S1gwQi",
+          "name": "Supabase KAWANA - Admin"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const r=$input.first().json;\nif(r.success!==true||!['extracted','stale'].includes(r.status)) throw new Error('Persistence not confirmed');\nreturn [{json:r}];"
+      },
+      "id": "2394bb35-ee57-4bd1-9b7a-5b2dbc01c19a",
+      "name": "Confirm persisted documents",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2880,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "id": "25d8b68e-4fa2-4f13-ad9e-1ca4d0a34b02",
+      "name": "Every minute",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d=$('Claim next content').first().json;\nif(!d.id||!d.claim_id) return [];\nconst allowed=new Set([\"busy\", \"content_limit\", \"expanded_size_limit\", \"extraction_failed\", \"extraction_timeout\", \"file_size_limit\", \"incomplete_body\", \"invalid_csv\", \"invalid_pdf\", \"invalid_xls\", \"invalid_xlsx\", \"macros_not_supported\", \"no_content\", \"not_found\", \"page_limit\", \"sheet_dimensions_limit\", \"sheet_limit\", \"unauthorized\", \"unsupported_kind\"]);\nconst candidate=$input.first().json.error;\nconst errorCode=typeof candidate==='string'&&allowed.has(candidate)?candidate:'extraction_failed';\nreturn [{json:{p_document_id:d.id,p_claim_id:d.claim_id,p_source_etag:d.source_etag,p_status:'failed',p_metadata:{error_code:errorCode},p_execution_id:String($execution.id)}}];"
+      },
+      "id": "9b7f8020-432b-40de-b5be-4bcb0e40725d",
+      "name": "Prepare safe failure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://xjxwyzyfnumfphubuize.supabase.co/rest/v1/rpc/document_content_complete",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "e1239619-29f9-471b-b2fe-450db5cacdee",
+      "name": "Record failure",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        560
+      ],
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "M0YKGnciV5S1gwQi",
+          "name": "Supabase KAWANA - Admin"
+        }
+      }
+    },
+    {
+      "id": "1bf834d3-0fa0-4dcb-9df5-5ddc048f76f1",
+      "name": "Worker returned content",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1800,
+        208
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d7c07375-53e7-418b-bf5d-7b1f99301571",
+              "leftValue": "={{ typeof $json.text === 'string' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Manual pilot": {
+      "main": [
+        [
+          {
+            "node": "Claim next content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claim next content": {
+      "main": [
+        [
+          {
+            "node": "Validate candidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate candidates": {
+      "main": [
+        [
+          {
+            "node": "Read Graph metadata",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare safe failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Graph metadata": {
+      "main": [
+        [
+          {
+            "node": "Validate source and download",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare safe failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate source and download": {
+      "main": [
+        [
+          {
+            "node": "Download content without credentials",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare safe failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download content without credentials": {
+      "main": [
+        [
+          {
+            "node": "Validate content binary",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare safe failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate content binary": {
+      "main": [
+        [
+          {
+            "node": "Extract document content",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare safe failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract document content": {
+      "main": [
+        [
+          {
+            "node": "Worker returned content",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare safe failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare text and provenance": {
+      "main": [
+        [
+          {
+            "node": "Recheck Graph version",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare safe failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recheck Graph version": {
+      "main": [
+        [
+          {
+            "node": "Check unchanged version",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare safe failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check unchanged version": {
+      "main": [
+        [
+          {
+            "node": "Save text with version guard",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare safe failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save text with version guard": {
+      "main": [
+        [
+          {
+            "node": "Confirm persisted documents",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare safe failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every minute": {
+      "main": [
+        [
+          {
+            "node": "Claim next content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare safe failure": {
+      "main": [
+        [
+          {
+            "node": "Record failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Worker returned content": {
+      "main": [
+        [
+          {
+            "node": "Prepare text and provenance",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare safe failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "saveDataErrorExecution": "none",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false,
+    "callerPolicy": "workflowsFromSameOwner",
+    "executionTimeout": 300,
+    "availableInMCP": false
+  },
+  "name": "13C - KAWANA - ocr content queue (DEPLOY WORKER FIRST)",
+  "active": false
+}
