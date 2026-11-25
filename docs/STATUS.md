@@ -96,3 +96,22 @@ O snapshot analisado tinha 1.387 nós e 2.514 relações. O diagnóstico registr
 relações externas/pendentes e relações colapsadas no grafo não direcionado;
 portanto, o mapa serve para navegação e memória, enquanto código, migrations e
 verificação autorizada dos serviços permanecem como fontes finais.
+
+## Financeiro — verificação direta em 25/11/2026
+
+Consulta ao Supabase KAWANA confirmou 32 fatos v2 pendentes de janeiro a agosto
+e quatro fatos v2 aprovados em setembro/2026, todos com ETag igual ao catálogo.
+Setembro tem publicação financeira vigente. Existem também quatro fatos v1
+pendentes legados (dois em agosto e dois em setembro), que não devem ser duplicados.
+A tabela de transações individuais está vazia; os indicadores publicados não
+representam lançamentos detalhados nem contas a receber/pagar.
+
+O seletor agora abre automaticamente a única empresa acessível quando a URL
+não informa empresa. Escolha explícita de empresa, período e consulta legada
+(`company=`) é preservada. Com múltiplas empresas, mantém a seleção manual.
+A consulta continua com sessão autenticada/RLS, sem IDs fixos ou credenciais novas.
+
+Nenhum fato foi inserido, aprovado ou republicado nesta verificação. A extração
+financeira já existe; junho–agosto precisam da revisão da base acumulada antes
+de publicação mensal. Validação visual no dashboard depende do endereço e sessão
+do usuário; código preparado não comprova implantação do frontend.

@@ -37,7 +37,8 @@ const { targetPath = "/dashboard" } = Astro.props;
     if (companyId) {
       url.searchParams.set("company", companyId);
     } else {
-      url.searchParams.delete("company");
+      // An explicit empty value preserves the user's choice of legacy data.
+      url.searchParams.set("company", "");
     }
 
     window.location.href = url.toString();
@@ -51,8 +52,17 @@ const { targetPath = "/dashboard" } = Astro.props;
       return;
     }
 
+    // Capture before the page loader fills an implicit legacy period in the URL.
+    const initialUrl = new URL(window.location.href);
+
     try {
       const companies = await getAccessibleFinancialCompanies();
+
+      if (!initialUrl.searchParams.has("company") && companies.length === 1) {
+        initialUrl.searchParams.set("company", companies[0].id);
+        window.location.replace(initialUrl.toString());
+        return;
+      }
       const selectedCompany = new URLSearchParams(window.location.search).get("company") ?? "";
 
       select.replaceChildren(
