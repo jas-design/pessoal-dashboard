@@ -12,7 +12,7 @@ import {
   type FinancialXlsxBinary,
 } from "../../src/services/financial/financial-xlsx-adapter";
 import { listFinancialXlsxMappings } from "../../src/services/financial/financial-xlsx-mappings";
-import { parseKawanaWorkbook } from "../../src/services/financial/kawana-xlsx-parser";
+import { parseKawanaWorkbook, parseKawanaWorkbookV2 } from "../../src/services/financial/kawana-xlsx-parser";
 import { prepareFinancialReviewPersistence } from "../../src/services/financial/financial-review-persistence";
 
 const SUMMARY_MONTH_COLUMNS = ["C", "D", "E", "F", "G", "H", "I", "J", "K"] as const;
@@ -169,6 +169,17 @@ async function createSyntheticConsolidatedWorkbook(periodMonth = "2026-01") {
   workbook.getWorksheet("RECEITAS KWN")!.getCell("B6").value = 120.25;
   workbook.getWorksheet("DESPESAS KWN")!.getCell("B6").value = -45.1;
 
+  for (const [sheetName, values] of [
+    ["RECEITAS X DESPESAS KWN", { C6: 75.15, C8: -45.1, C23: 120.25 }],
+    ["RECEITAS KWN", { C6: 120.25 }],
+    ["DESPESAS KWN", { C6: -45.1 }],
+  ] as const) {
+    const sheet = workbook.getWorksheet(sheetName)!;
+    sheet.getRow(4).eachCell((cell) => { cell.value = null; });
+    sheet.getCell("C4").value = new Date(`${periodMonth}-01T00:00:00Z`);
+    for (const [address, value] of Object.entries(values)) sheet.getCell(address).value = value;
+  }
+
   return Buffer.from(await workbook.xlsx.writeBuffer());
 }
 
@@ -262,7 +273,7 @@ test("adaptador preserva metadados e seleciona mapeamento versionado", async () 
     {
       id: "kawana-management-report",
       version: "2",
-      parserVersion: "12A.2",
+      parserVersion: "12A.3",
     },
   ]);
 });
@@ -344,7 +355,7 @@ test("mapping v2 seleciona e concilia exatamente a competencia de janeiro a sete
         (fact) => fact.includedInConsolidatedKpi && fact.aggregationLevel === "canonical",
       );
       assert.equal(result.metadata.mapping.version, "2");
-      assert.equal(result.metadata.mapping.parserVersion, "12A.2");
+      assert.equal(result.metadata.mapping.parserVersion, "12A.3");
       assert.equal(canonicalFacts.length, 4);
       assert.ok(canonicalFacts.every((fact) => fact.periodMonth === periodMonth));
       assert.deepEqual(
@@ -395,9 +406,9 @@ test("mapping v2 reconhece o layout consolidado e preserva as quatro origens", a
     ]),
     [
       ["cash_available", "350.80", "RESUMO KWM", "B10"],
-      ["revenue", "120.25", "RECEITAS X DESPESAS KWN", "B23"],
-      ["expense", "45.10", "RECEITAS X DESPESAS KWN", "B8"],
-      ["net_result", "75.15", "RECEITAS X DESPESAS KWN", "B6"],
+      ["revenue", "120.25", "RECEITAS X DESPESAS KWN", "C23"],
+      ["expense", "45.10", "RECEITAS X DESPESAS KWN", "C8"],
+      ["net_result", "75.15", "RECEITAS X DESPESAS KWN", "C6"],
     ],
   );
   assert.equal(canonical.find((fact) => fact.metricCode === "expense")?.originalSign, "negative");
@@ -436,7 +447,7 @@ test("mapping v2 rejeita layout consolidado incompleto e despesa sem sinal negat
 
   const invalidSign = new ExcelJS.Workbook();
   await invalidSign.xlsx.load(Uint8Array.from(await createSyntheticConsolidatedWorkbook()).buffer);
-  invalidSign.getWorksheet("RECEITAS X DESPESAS KWN")!.getCell("B8").value = 45.1;
+  invalidSign.getWorksheet("RECEITAS X DESPESAS KWN")!.getCell("C8").value = 45.1;
   await assert.rejects(
     extractFinancialXlsx({
       ...request,
@@ -583,4 +594,43 @@ test("integração local processa o XLSX real sem persistência", {
   assert.equal(new Set(result.facts.map((fact) => fact.logicalKey)).size, result.facts.length);
   assert.equal(result.status, "needs_review");
   assert.equal(result.publishable, false);
+});
+
+
+test("consolidado seleciona fevereiro pelo cabeçalho e ignora acumulados", async () => {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(Uint8Array.from(await createSyntheticConsolidatedWorkbook("2026-02")).buffer);
+  for (const name of ["RECEITAS X DESPESAS KWN", "RECEITAS KWN", "DESPESAS KWN"]) {
+    const sheet = workbook.getWorksheet(name)!;
+    sheet.getCell("C4").value = new Date("2026-01-01T00:00:00Z");
+    sheet.getCell("F4").value = new Date("2026-02-01T00:00:00Z");
+    sheet.getCell("B6").value = 99999;
+  }
+  const combined = workbook.getWorksheet("RECEITAS X DESPESAS KWN")!;
+  combined.getCell("F23").value = 20;
+  combined.getCell("F8").value = -30;
+  combined.getCell("F6").value = -10;
+  workbook.getWorksheet("RECEITAS KWN")!.getCell("F6").value = 20;
+  workbook.getWorksheet("DESPESAS KWN")!.getCell("F6").value = -30;
+  combined.getCell("A2").value = "Resultado de Receitas e Despesas - 01/01/2026 - 28/02/2026";
+  workbook.getWorksheet("RESUMO KWM")!.getCell("A2").value = "RESUMO FINANCEIRO - 01/01/2026 - 28/02/2026";
+  const request = { ...context, expectedPeriod: "2026-02" };
+  const result = await parseKawanaWorkbookV2(Buffer.from(await workbook.xlsx.writeBuffer()), request);
+  const canonical = result.facts.filter(f => f.includedInConsolidatedKpi);
+  assert.equal(canonical.find(f => f.metricCode === "revenue")?.amount, "20.00");
+  assert.equal(canonical.find(f => f.metricCode === "revenue")?.evidence.cellAddress, "F23");
+  assert.equal(canonical.find(f => f.metricCode === "expense")?.amount, "30.00");
+  assert.equal(canonical.find(f => f.metricCode === "net_result")?.amount, "-10.00");
+  assert.equal(canonical.find(f => f.metricCode === "cash_available")?.amount, "350.80");
+  assert.ok(result.reconciliations.every(r => r.status === "passed"));
+  combined.getCell("A23").value = "Outra categoria";
+  combined.getCell("A24").value = "Receita";
+  combined.getCell("F24").value = 20;
+  const shifted = await parseKawanaWorkbookV2(Buffer.from(await workbook.xlsx.writeBuffer()), request);
+  assert.equal(shifted.facts.find(f => f.metricCode === "revenue")?.evidence.cellAddress, "F24");
+  combined.getCell("G4").value = new Date("2026-02-01T00:00:00Z");
+  await assert.rejects(parseKawanaWorkbookV2(Buffer.from(await workbook.xlsx.writeBuffer()), request), /ambígua/);
+  combined.getCell("F4").value = null;
+  combined.getCell("G4").value = null;
+  await assert.rejects(parseKawanaWorkbookV2(Buffer.from(await workbook.xlsx.writeBuffer()), request), /ausente/);
 });

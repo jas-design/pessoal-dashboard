@@ -1,7 +1,7 @@
 import ExcelJS, { type Cell, type Worksheet } from "exceljs";
 
 export const KAWANA_PARSER_VERSION = "06A.1";
-export const KAWANA_PARSER_V2_VERSION = "12A.2";
+export const KAWANA_PARSER_V2_VERSION = "12A.3";
 
 const expectedSheets = (year: number) => [
   "CAPA",
@@ -397,6 +397,19 @@ function requireCellFact(
   }
 }
 
+function requireMonthlyColumn(worksheet: Worksheet, period: string) {
+  const columns: string[] = [];
+  worksheet.getRow(4).eachCell((cell, column) => {
+    if (column > 2 && periodFromValue(readCell(cell).value) === period) {
+      columns.push(cell.address.replace(/[0-9]+$/, ""));
+    }
+  });
+  if (columns.length !== 1) {
+    throw new Error(`Competência mensal ausente ou ambígua em ${worksheet.name}: ${period}.`);
+  }
+  return columns[0]!;
+}
+
 function parseConsolidatedCanonicalFacts(
   summary: Worksheet,
   combined: Worksheet,
@@ -407,9 +420,12 @@ function parseConsolidatedCanonicalFacts(
   requireCellText(summary, "A10", "TOTAL");
   requireCellText(combined, "A6", "Resultado");
   requireCellText(combined, "A8", "Despesa");
-  requireCellText(combined, "A23", "Receita");
+  const column = requireMonthlyColumn(combined, context.expectedPeriod!);
+  const revenueRows = [23, 24].filter((row) =>
+    normalizeSheetName(cellText(combined, `A${row}`)) === normalizeSheetName("Receita"));
+  if (revenueRows.length !== 1) throw new Error("Origem de receita ausente ou ambígua.");
 
-  const expense = readNumericCell(combined.getCell("B8"));
+  const expense = readNumericCell(combined.getCell(`${column}8`));
   if (!expense || expense.value >= 0) {
     throw new Error("A despesa consolidada deve possuir sinal original negativo.");
   }
@@ -420,17 +436,17 @@ function parseConsolidatedCanonicalFacts(
     category: "balance", sourceScope: "business", accountingBasis: "cash",
     includedInConsolidatedKpi: true, aggregationLevel: "canonical",
   });
-  requireCellFact(facts, seen, context, combined, "B23", {
+  requireCellFact(facts, seen, context, combined, `${column}${revenueRows[0]}`, {
     periodMonth, metricCode: "revenue", indicator: "Receitas realizadas",
     category: "realized", sourceScope: "business", accountingBasis: "unspecified",
     includedInConsolidatedKpi: true, aggregationLevel: "canonical",
   });
-  requireCellFact(facts, seen, context, combined, "B8", {
+  requireCellFact(facts, seen, context, combined, `${column}8`, {
     periodMonth, metricCode: "expense", indicator: "Despesas realizadas",
     category: "realized", sourceScope: "business", accountingBasis: "unspecified",
     includedInConsolidatedKpi: true, aggregationLevel: "canonical", canonicalTransform: Math.abs,
   });
-  requireCellFact(facts, seen, context, combined, "B6", {
+  requireCellFact(facts, seen, context, combined, `${column}6`, {
     periodMonth, metricCode: "net_result", indicator: "Resultado realizado",
     category: "realized", sourceScope: "business", accountingBasis: "unspecified",
     includedInConsolidatedKpi: true, aggregationLevel: "canonical",
@@ -453,10 +469,11 @@ function parseSinglePeriodDetails(
   seen: Set<string>,
   kind: "revenue" | "expense",
 ) {
+  const column = requireMonthlyColumn(worksheet, context.expectedPeriod!);
   for (let row = 7; row <= worksheet.rowCount; row += 1) {
     const label = cellText(worksheet, `A${row}`);
-    if (!label || !readNumericCell(worksheet.getCell(`B${row}`))) continue;
-    addCellFact(facts, seen, context, worksheet, `B${row}`, {
+    if (!label || !readNumericCell(worksheet.getCell(`${column}${row}`))) continue;
+    addCellFact(facts, seen, context, worksheet, `${column}${row}`, {
       periodMonth: context.expectedPeriod!, metricCode: `${kind}_detail_${slug(label)}_${row}`,
       indicator: label, category: "realized", sourceScope: "pending_review",
       accountingBasis: "unspecified", includedInConsolidatedKpi: false,
@@ -737,9 +754,18 @@ function buildLegacyReconciliations(
 }
 
 function buildConsolidatedReconciliations(facts: FinancialFact[]) {
-  const revenue = getFactMinor(facts, "RECEITAS X DESPESAS KWN", "B23");
-  const expense = getFactMinor(facts, "RECEITAS X DESPESAS KWN", "B8");
-  const result = getFactMinor(facts, "RECEITAS X DESPESAS KWN", "B6");
+  const metric = (code: string) => facts.find((fact) => fact.metricCode === code);
+  const amount = (code: string) => {
+    const fact = metric(code);
+    return fact ? Number(fact.amountMinor) : null;
+  };
+  const source = (code: string) => {
+    const fact = metric(code);
+    return fact ? `${fact.evidence.sheet}!${fact.evidence.cellAddress}` : "origem ausente";
+  };
+  const revenue = amount("revenue");
+  const expense = amount("expense");
+  const result = amount("net_result");
   const cash = getFactMinor(facts, "RESUMO KWM", "B10");
   const sum = (values: Array<number | null>, size: number) => values.length === size
     && values.every((value): value is number => value !== null)
@@ -757,22 +783,22 @@ function buildConsolidatedReconciliations(facts: FinancialFact[]) {
       revenue !== null && expense !== null ? revenue - expense : null,
       result,
       [
-        "RECEITAS X DESPESAS KWN!B23",
-        "RECEITAS X DESPESAS KWN!B8",
-        "RECEITAS X DESPESAS KWN!B6",
+        source("revenue"),
+        source("expense"),
+        source("net_result"),
       ],
     ),
     reconciliation(
       "revenue_detail_matches_combined",
-      getFactMinor(facts, "RECEITAS KWN", "B6"),
+      amount("revenue_reconciliation_total"),
       revenue,
-      ["RECEITAS KWN!B6", "RECEITAS X DESPESAS KWN!B23"],
+      [source("revenue_reconciliation_total"), source("revenue")],
     ),
     reconciliation(
       "expense_detail_matches_combined",
-      getFactMinor(facts, "DESPESAS KWN", "B6"),
+      amount("expense_reconciliation_total"),
       expense,
-      ["DESPESAS KWN!B6", "RECEITAS X DESPESAS KWN!B8"],
+      [source("expense_reconciliation_total"), source("expense")],
     ),
     reconciliation(
       "summary_bank_components_match_total",
@@ -896,7 +922,7 @@ async function parseKawanaWorkbookConfigured(
     } else {
       parseRevenueDetails(revenue, parserContext, facts, seen, configuration.monthColumns);
     }
-    addTotal(revenue, consolidatedLayout ? "B6" : `${requestedMonthColumn}4`, { periodMonth: parserContext.expectedPeriod,
+    addTotal(revenue, consolidatedLayout ? `${requireMonthlyColumn(revenue, parserContext.expectedPeriod!)}6` : `${requestedMonthColumn}4`, { periodMonth: parserContext.expectedPeriod,
       metricCode: "revenue_reconciliation_total", indicator: "Total de receitas para conciliação",
       category: "realized", sourceScope: "pending_review", accountingBasis: "unspecified",
       includedInConsolidatedKpi: false, aggregationLevel: "supporting_detail" });
@@ -908,7 +934,7 @@ async function parseKawanaWorkbookConfigured(
     } else {
       parseExpenseDetails(expense, parserContext, facts, seen, configuration.expenseMonthColumns);
     }
-    addTotal(expense, consolidatedLayout ? "B6" : `${requestedExpenseColumn}4`, { periodMonth: parserContext.expectedPeriod,
+    addTotal(expense, consolidatedLayout ? `${requireMonthlyColumn(expense, parserContext.expectedPeriod!)}6` : `${requestedExpenseColumn}4`, { periodMonth: parserContext.expectedPeriod,
       metricCode: "expense_reconciliation_total", indicator: "Total de despesas para conciliação",
       category: "realized", sourceScope: "pending_review", accountingBasis: "unspecified",
       includedInConsolidatedKpi: false, aggregationLevel: "supporting_detail", canonicalTransform: Math.abs });
